@@ -69,7 +69,7 @@
                     android:layout_height="wrap_content"
                     android:text="Screen time"
                     android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/an_time"
@@ -92,7 +92,7 @@
                     android:layout_height="wrap_content"
                     android:text="Apps used"
                     android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/an_apps"
@@ -115,7 +115,7 @@
                     android:layout_height="wrap_content"
                     android:text="Launches"
                     android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
+                    android:textSize="12sp" />
 
                 <TextView
                     android:id="@+id/an_launches"
@@ -168,7 +168,7 @@
                 android:gravity="center"
                 android:text="No usage data yet"
                 android:textColor="@color/text_secondary"
-                android:textSize="16sp" />
+                android:textSize="17sp" />
 
             <Button
                 android:id="@+id/an_grant"
