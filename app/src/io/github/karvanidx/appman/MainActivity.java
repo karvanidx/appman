@@ -1063,7 +1063,7 @@ public class MainActivity extends Activity {
             }, 12000);
             return;
         }
-        op.log("Shell service ready (UID 2000)");
+        op.log("Shell service ready");
         action.run();
     }
 
@@ -1140,7 +1140,7 @@ public class MainActivity extends Activity {
                     state.setText("Ready — no root needed");
                     state.setTextColor(0xFF2E7D32);
                     detail.setText("Shizuku API " + ShizukuHelper.version()
-                            + "  •  shell UID 2000\nForce stop, clear cache and clear data "
+                            + "  •  shell access\nForce stop, clear cache and clear data "
                             + "are enabled in every app's details.");
                 }
                 if (!ShizukuHelper.getLastError().isEmpty()) {

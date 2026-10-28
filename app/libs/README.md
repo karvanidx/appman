@@ -10,5 +10,5 @@ They are committed here so AppMan keeps building with plain `javac` + `d8` (no G
 no network). If you update them, keep all four at the same version.
 
 AppMan uses Shizuku's **user service** API: `Shizuku.bindUserService(...)` starts
-`com.appman.ShellService` in a process that runs with the ADB shell UID (2000), which is
+`io.github.karvanidx.appman.ShellService` in a process that runs with the ADB shell UID (2000), which is
 what allows `pm clear` / `am force-stop` without root.
