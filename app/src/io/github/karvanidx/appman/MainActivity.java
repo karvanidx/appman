@@ -93,6 +93,7 @@ public class MainActivity extends Activity {
     private final ArrayDeque<String> uninstallQueue = new ArrayDeque<>();
 
     private Runnable pendingShizukuAction;
+    private Operation activeOperation;
     private Shizuku.OnRequestPermissionResultListener shizukuPermListener;
     private Shizuku.OnBinderReceivedListener shizukuBinderListener;
     private Shizuku.OnBinderDeadListener shizukuDeadListener;
@@ -1069,11 +1070,16 @@ public class MainActivity extends Activity {
 
     private void powerAction(final AppEntry e, String title, final String command,
                              final String success, final Runnable after) {
+        if (activeOperation != null && !activeOperation.finished()) {
+            Utils.toast(this, "Another operation is still running");
+            return;
+        }
         if (!ShizukuHelper.isRunning()) {
             showShizukuNotRunning();
             return;
         }
         final Operation op = new Operation(title);
+        activeOperation = op;
         withShizuku(op, new Runnable() {
             @Override
             public void run() {
@@ -1212,7 +1218,12 @@ public class MainActivity extends Activity {
     }
 
     private void runTestShell() {
+        if (activeOperation != null && !activeOperation.finished()) {
+            Utils.toast(this, "Another operation is still running");
+            return;
+        }
         final Operation op = new Operation("Test Shizuku shell");
+        activeOperation = op;
         withShizuku(op, new Runnable() {
             @Override
             public void run() {
@@ -1287,6 +1298,12 @@ public class MainActivity extends Activity {
                 }
             });
             close.setEnabled(false);
+            dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+                @Override
+                public void onDismiss(DialogInterface d) {
+                    if (activeOperation == Operation.this) activeOperation = null;
+                }
+            });
             dialog.show();
         }
 
@@ -1318,6 +1335,8 @@ public class MainActivity extends Activity {
                 }
             });
             close.setEnabled(true);
+            if (activeOperation == this) activeOperation = null;
+            pendingShizukuAction = null;
         }
 
         boolean finished() {
