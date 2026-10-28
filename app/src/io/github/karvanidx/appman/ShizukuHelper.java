@@ -9,9 +9,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Parcel;
+import android.os.RemoteException;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import rikka.shizuku.Shizuku;
 import rikka.shizuku.ShizukuBinderWrapper;
@@ -37,6 +40,12 @@ public final class ShizukuHelper {
     private static final String DESC_ACT = "android.app.IActivityManager";
     private static final String STUB_PKG = "android.content.pm.IPackageManager$Stub";
     private static final String STUB_ACT = "android.app.IActivityManager$Stub";
+
+    // Transaction codes extracted from this device's Android 16 framework.jar.
+    // Used as a fallback when Shizuku's transaction-code reflection is unavailable.
+    private static final int CODE_CLEAR_DATA = 81;   // IActivityManager.clearApplicationUserData
+    private static final int CODE_CLEAR_CACHE = 98;  // IPackageManager.deleteApplicationCacheFilesAsUser
+    private static final int CODE_FORCE_STOP = 85;   // IActivityManager.forceStopPackage
 
     public interface StateListener {
         void onShizukuStateChanged();
@@ -140,7 +149,7 @@ public final class ShizukuHelper {
     public static Result forceStop(String pkg) {
         final int userId = android.os.Process.myUid() / 100000;
         return transact(SVC_ACTIVITY, DESC_ACT, STUB_ACT, "forceStopPackage",
-                new ParcelWriter() {
+                CODE_FORCE_STOP, false, null, new ParcelWriter() {
                     @Override
                     public void write(Parcel p) {
                         p.writeString(pkg);
@@ -151,37 +160,48 @@ public final class ShizukuHelper {
 
     public static Result clearCache(String pkg) {
         final int userId = android.os.Process.myUid() / 100000;
+        DataObserver observer = new DataObserver();
         return transact(SVC_PACKAGE, DESC_PKG, STUB_PKG, "deleteApplicationCacheFilesAsUser",
-                new ParcelWriter() {
+                CODE_CLEAR_CACHE, false, observer, new ParcelWriter() {
                     @Override
                     public void write(Parcel p) {
                         p.writeString(pkg);
                         p.writeInt(userId);
-                        p.writeStrongBinder(DUMMY_OBSERVER);
+                        p.writeStrongBinder(observer);
                     }
                 });
     }
 
     public static Result clearData(String pkg) {
         final int userId = android.os.Process.myUid() / 100000;
-        return transact(SVC_PACKAGE, DESC_PKG, STUB_PKG, "clearApplicationUserData",
-                new ParcelWriter() {
+        DataObserver observer = new DataObserver();
+        return transact(SVC_ACTIVITY, DESC_ACT, STUB_ACT, "clearApplicationUserData",
+                CODE_CLEAR_DATA, true, observer, new ParcelWriter() {
                     @Override
                     public void write(Parcel p) {
                         p.writeString(pkg);
-                        p.writeStrongBinder(DUMMY_OBSERVER);
+                        p.writeBoolean(false); // keepState
+                        p.writeStrongBinder(observer);
                         p.writeInt(userId);
                     }
                 });
     }
 
+    private static int resolveCode(String stubClass, String methodName, int fallback) {
+        try {
+            Integer code = SystemServiceHelper.getTransactionCode(stubClass, methodName);
+            if (code != null) return code.intValue();
+        } catch (Throwable ignored) {
+        }
+        return fallback;
+    }
+
     private static Result transact(String serviceName, String descriptor, String stubClass,
-                                   String methodName, ParcelWriter writer) {
+                                   String methodName, int fallbackCode, boolean readAccepted,
+                                   DataObserver observer, ParcelWriter writer) {
         IBinder target;
-        Integer code;
         try {
             target = SystemServiceHelper.getSystemService(serviceName);
-            code = SystemServiceHelper.getTransactionCode(stubClass, methodName);
         } catch (Throwable t) {
             lastError = describe(t);
             return new Result(-1, "Cannot access " + serviceName + ": " + describe(t));
@@ -190,20 +210,34 @@ public final class ShizukuHelper {
             lastError = "System service not found: " + serviceName;
             return new Result(-1, "System service not found: " + serviceName);
         }
-        if (code == null) {
-            lastError = "Unknown transaction: " + methodName;
-            return new Result(-1, "Unknown transaction code for " + methodName);
-        }
+        int code = resolveCode(stubClass, methodName, fallbackCode);
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
         try {
             data.writeInterfaceToken(descriptor);
             writer.write(data);
             IBinder proxy = new ShizukuBinderWrapper(target);
-            proxy.transact(code.intValue(), data, reply, 0);
+            proxy.transact(code, data, reply, 0);
             reply.readException();
+            if (readAccepted) {
+                boolean accepted = reply.readInt() != 0;
+                if (!accepted) {
+                    lastError = "System rejected " + methodName;
+                    return new Result(-1, "System rejected " + methodName);
+                }
+            }
+            if (observer != null) {
+                if (!observer.latch.await(15, TimeUnit.SECONDS)) {
+                    lastError = "Timed out waiting for " + methodName;
+                    return new Result(-1, "Timed out waiting for the system to finish");
+                }
+                if (!observer.success) {
+                    lastError = methodName + " reported failure";
+                    return new Result(-1, "The system reported failure");
+                }
+            }
             lastError = "";
-            return new Result(0, "OK");
+            return new Result(0, "OK (transaction " + code + ")");
         } catch (Throwable t) {
             lastError = describe(t);
             return new Result(-1, describe(t));
@@ -213,28 +247,41 @@ public final class ShizukuHelper {
         }
     }
 
+    private static final class DataObserver extends Binder {
+        final CountDownLatch latch = new CountDownLatch(1);
+        volatile boolean success;
+
+        @Override
+        protected boolean onTransact(int code, Parcel data, Parcel reply, int flags)
+                throws RemoteException {
+            if (code == 1) {
+                data.enforceInterface("android.content.pm.IPackageDataObserver");
+                data.readString();
+                success = data.readInt() != 0;
+                latch.countDown();
+                return true;
+            }
+            return super.onTransact(code, data, reply, flags);
+        }
+    }
+
     public static Result selfTest() {
         StringBuilder sb = new StringBuilder();
-        boolean ok = true;
+        boolean ok = false;
         try {
             IBinder pkg = SystemServiceHelper.getSystemService(SVC_PACKAGE);
             IBinder act = SystemServiceHelper.getSystemService(SVC_ACTIVITY);
-            Integer clearData = SystemServiceHelper.getTransactionCode(STUB_PKG,
-                    "clearApplicationUserData");
-            Integer clearCache = SystemServiceHelper.getTransactionCode(STUB_PKG,
-                    "deleteApplicationCacheFilesAsUser");
-            Integer forceStop = SystemServiceHelper.getTransactionCode(STUB_ACT,
-                    "forceStopPackage");
+            int clearData = resolveCode(STUB_ACT, "clearApplicationUserData", CODE_CLEAR_DATA);
+            int clearCache = resolveCode(STUB_PKG, "deleteApplicationCacheFilesAsUser", CODE_CLEAR_CACHE);
+            int forceStop = resolveCode(STUB_ACT, "forceStopPackage", CODE_FORCE_STOP);
             sb.append("Shizuku UID: ").append(serverUid()).append('\n');
             sb.append("package binder: ").append(pkg != null ? "ok" : "missing").append('\n');
             sb.append("activity binder: ").append(act != null ? "ok" : "missing").append('\n');
-            sb.append("clearData code: ").append(clearData == null ? "unresolved" : clearData).append('\n');
-            sb.append("clearCache code: ").append(clearCache == null ? "unresolved" : clearCache).append('\n');
-            sb.append("forceStop code: ").append(forceStop == null ? "unresolved" : forceStop);
-            ok = pkg != null && act != null && clearData != null
-                    && clearCache != null && forceStop != null;
+            sb.append("clearData code: ").append(clearData).append('\n');
+            sb.append("clearCache code: ").append(clearCache).append('\n');
+            sb.append("forceStop code: ").append(forceStop);
+            ok = pkg != null && act != null;
         } catch (Throwable t) {
-            ok = false;
             sb.append("Self-test failed: ").append(describe(t));
         }
         return new Result(ok ? 0 : -1, sb.toString());

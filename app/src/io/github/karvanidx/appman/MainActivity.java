@@ -476,7 +476,7 @@ public class MainActivity extends Activity {
 
     private void showAbout() {
         new AlertDialog.Builder(this)
-                .setTitle("AppMan 1.3")
+                .setTitle("AppMan 1.3.1")
                 .setMessage("A lightweight no-root app manager and usage tracker, built in Termux.\n\n"
                         + "• Lists all installed apps (user + system)\n"
                         + "• Backup APKs (including split APKs) to Download/AppMan\n"

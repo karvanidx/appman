@@ -4,7 +4,7 @@ A tiny, no-root Android app manager and screen-time tracker built entirely insid
 no Gradle, no Android Studio, no Kotlin, no AndroidX. ~94 KB.
 
 - **Package:** `io.github.karvanidx.appman`
-- **Version:** 1.3
+- **Version:** 1.3.1
 - **Author:** [karvanidx](https://github.com/karvanidx)
 - **Built with:** Pi agent + DeepSeek
 - **License:** MIT
@@ -78,7 +78,7 @@ cd ~/projects/appman
 ./build.sh
 ```
 
-Output: `dist/appman-1.3.apk` (+ `.idsig`), v2+v3 signed.
+Output: `dist/appman-1.3.1.apk` (+ `.idsig`), v2+v3 signed.
 
 Pipeline: `aapt2 compile/link` → `javac -source 8 -target 8 -bootclasspath android.jar`
 → `d8` → `tools/mkapk.py` (packs `classes.dex`, aligns `resources.arsc` to 4 bytes and
@@ -89,8 +89,8 @@ native libs to 16 KB) → `apksigner sign` (keystore auto-created on first build
 ## Install
 
 ### Tap the APK
-`dist/appman-1.3.apk` is copied to `/sdcard/Download/AppMan/appman-1.3.apk`.
-**Files → Download → AppMan → appman-1.3.apk → Install**.
+`dist/appman-1.3.1.apk` is copied to `/sdcard/Download/AppMan/appman-1.3.1.apk`.
+**Files → Download → AppMan → appman-1.3.1.apk → Install**.
 
 > The package was renamed from `com.appman` to `io.github.karvanidx.appman` in v1.2.
 > It installs as a separate app. Uninstall the old **AppMan 1.1** afterwards to avoid
@@ -101,7 +101,7 @@ Developer options → Wireless debugging (and "Pair device with pairing code"), 
 
 ```bash
 ./adb-pair.sh <pair_ip:port> <6-digit-code> <connect_ip:port>
-adb install -r dist/appman-1.3.apk
+adb install -r dist/appman-1.3.1.apk
 ```
 
 ## Shizuku setup

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1
+- Android 16 QPR compatibility: transaction codes are now taken from this device's
+  `framework.jar` as a fallback (`forceStopPackage=85`, `deleteApplicationCacheFilesAsUser=98`,
+  `clearApplicationUserData=81`)
+- Clear data now uses `IActivityManager.clearApplicationUserData(String, boolean,
+  IPackageDataObserver, int)` — the extra `keepState` boolean was the missing argument
+- Wait for the system's `IPackageDataObserver` callback, so "Completed" means the clear
+  actually finished
+
 ## 1.3
 - Fixed "Starting shell service…" hanging: switched from Shizuku user service to the
   classic system-service binder proxy (`IPackageManager` / `IActivityManager`)
