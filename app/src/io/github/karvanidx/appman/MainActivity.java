@@ -476,7 +476,7 @@ public class MainActivity extends Activity {
 
     private void showAbout() {
         new AlertDialog.Builder(this)
-                .setTitle("AppMan 1.2")
+                .setTitle("AppMan 1.3")
                 .setMessage("A lightweight no-root app manager and usage tracker, built in Termux.\n\n"
                         + "• Lists all installed apps (user + system)\n"
                         + "• Backup APKs (including split APKs) to Download/AppMan\n"
@@ -484,7 +484,7 @@ public class MainActivity extends Activity {
                         + "• Uninstall via the Android confirmation dialog\n"
                         + "• Export the app list as CSV\n"
                         + "• Screen time, launches and last-used analytics\n"
-                        + "• Force stop / clear cache / clear data via Shizuku\n\n"
+                        + "• Force stop / clear cache / clear data via Shizuku (binder mode)\n\n"
                         + "Clear cache & data of other apps needs Shizuku (shell access over "
                         + "Wireless debugging, no root).\n\n"
                         + "Built with Pi agent + DeepSeek.\n"
@@ -744,7 +744,7 @@ public class MainActivity extends Activity {
         final Runnable refreshPower = new Runnable() {
             @Override
             public void run() {
-                boolean ready = ShizukuHelper.isServiceReady();
+                boolean ready = ShizukuHelper.isReady();
                 forceStop.setEnabled(ready);
                 clearCache.setEnabled(ready);
                 clearData.setEnabled(ready);
@@ -757,9 +757,6 @@ public class MainActivity extends Activity {
                     shizukuStatus.setTextColor(0xFFC62828);
                 } else if (!ShizukuHelper.hasPermission()) {
                     shizukuStatus.setText("Shizuku is running — tap to grant permission");
-                    shizukuStatus.setTextColor(0xFFF57C00);
-                } else if (!ready) {
-                    shizukuStatus.setText("Shizuku shell service not connected — tap to start");
                     shizukuStatus.setTextColor(0xFFF57C00);
                 } else {
                     shizukuStatus.setText("Shizuku ready — force stop & cache clearing enabled");
@@ -846,15 +843,26 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View view) {
                 powerAction(e, "Force stop · " + e.label,
-                        "am force-stop " + e.pkg, "Force-stopped " + e.label, null);
+                        "forceStopPackage(" + e.pkg + ")",
+                        "Force-stopped " + e.label, null, new PowerCall() {
+                            @Override
+                            public ShizukuHelper.Result run() {
+                                return ShizukuHelper.forceStop(e.pkg);
+                            }
+                        });
             }
         });
         clearCache.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 powerAction(e, "Clear cache · " + e.label,
-                        "pm clear --cache-only " + e.pkg,
-                        "Cache cleared for " + e.label, refreshSizes);
+                        "deleteApplicationCacheFilesAsUser(" + e.pkg + ")",
+                        "Cache cleared for " + e.label, refreshSizes, new PowerCall() {
+                            @Override
+                            public ShizukuHelper.Result run() {
+                                return ShizukuHelper.clearCache(e.pkg);
+                            }
+                        });
             }
         });
         clearData.setOnClickListener(new View.OnClickListener() {
@@ -868,8 +876,13 @@ public class MainActivity extends Activity {
                             @Override
                             public void onClick(DialogInterface d, int w) {
                                 powerAction(e, "Clear data · " + e.label,
-                                        "pm clear " + e.pkg,
-                                        "Data cleared for " + e.label, refreshSizes);
+                                        "clearApplicationUserData(" + e.pkg + ")",
+                                        "Data cleared for " + e.label, refreshSizes, new PowerCall() {
+                                            @Override
+                                            public ShizukuHelper.Result run() {
+                                                return ShizukuHelper.clearData(e.pkg);
+                                            }
+                                        });
                             }
                         })
                         .setNegativeButton("Cancel", null)
@@ -925,20 +938,6 @@ public class MainActivity extends Activity {
             }
         };
         ShizukuHelper.addStateListener(shizukuStateListener);
-        ShizukuHelper.setOnServiceReady(new Runnable() {
-            @Override
-            public void run() {
-                ui.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        updateShizukuIndicator();
-                        Runnable action = pendingShizukuAction;
-                        pendingShizukuAction = null;
-                        if (action != null) action.run();
-                    }
-                });
-            }
-        });
         try {
             shizukuBinderListener = new Shizuku.OnBinderReceivedListener() {
                 @Override
@@ -971,6 +970,7 @@ public class MainActivity extends Activity {
                     ui.post(new Runnable() {
                         @Override
                         public void run() {
+                            ShizukuHelper.notifyPermissionChanged();
                             Utils.toast(MainActivity.this,
                                     granted ? "Shizuku permission granted" : "Shizuku permission denied");
                             updateShizukuIndicator();
@@ -998,15 +998,9 @@ public class MainActivity extends Activity {
         } else if (!ShizukuHelper.hasPermission()) {
             color = 0xFFF9A825;
             text = "Shizuku";
-        } else if (ShizukuHelper.isServiceReady()) {
+        } else {
             color = 0xFF2E7D32;
             text = "Shizuku on";
-        } else if (ShizukuHelper.isBinding()) {
-            color = 0xFFF9A825;
-            text = "Shizuku…";
-        } else {
-            color = 0xFFF9A825;
-            text = "Shizuku";
         }
         Drawable bg = dotShizuku.getBackground();
         if (bg != null) bg.setTint(color);
@@ -1040,36 +1034,17 @@ public class MainActivity extends Activity {
             }, 60000);
             return;
         }
-        if (!ShizukuHelper.isServiceReady()) {
-            op.log(ShizukuHelper.isBinding()
-                    ? "Waiting for the shell service…" : "Starting shell service…");
-            pendingShizukuAction = new Runnable() {
-                @Override
-                public void run() {
-                    withShizuku(op, action);
-                }
-            };
-            ShizukuHelper.bindService(getApplicationContext());
-            ui.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if (!ShizukuHelper.isServiceReady() && !op.finished()) {
-                        ShizukuHelper.onBindTimeout();
-                        String err = ShizukuHelper.getLastError();
-                        op.done(false, "Shell service did not start after 12s"
-                                + (err.isEmpty() ? "" : "\n" + err)
-                                + "\n\nOpen Shizuku status → Restart shell service.");
-                    }
-                }
-            }, 12000);
-            return;
-        }
-        op.log("Shell service ready");
+        op.log("Shizuku ready • " + ShizukuHelper.serverUid() + " • binder mode");
         action.run();
     }
 
-    private void powerAction(final AppEntry e, String title, final String command,
-                             final String success, final Runnable after) {
+    private interface PowerCall {
+        ShizukuHelper.Result run();
+    }
+
+    private void powerAction(final AppEntry e, String title, final String label,
+                             final String success, final Runnable after,
+                             final PowerCall call) {
         if (activeOperation != null && !activeOperation.finished()) {
             Utils.toast(this, "Another operation is still running");
             return;
@@ -1083,19 +1058,19 @@ public class MainActivity extends Activity {
         withShizuku(op, new Runnable() {
             @Override
             public void run() {
-                op.log("$ " + command);
-                setBusy(true, "Shizuku: " + command);
+                op.log("$ " + label);
+                setBusy(true, "Shizuku: " + label);
                 io.execute(new Runnable() {
                     @Override
                     public void run() {
-                        final ShizukuHelper.Result r = ShizukuHelper.run(command);
+                        final ShizukuHelper.Result r = call.run();
                         ui.post(new Runnable() {
                             @Override
                             public void run() {
                                 setBusy(false, null);
                                 if (r.ok()) {
                                     op.done(true, success);
-                                    if (after != null) after.run();
+                                    if (after != null) ui.postDelayed(after, 800);
                                 } else {
                                     op.done(false, r.message());
                                 }
@@ -1117,6 +1092,7 @@ public class MainActivity extends Activity {
         final Button test = v.findViewById(R.id.sh_test);
         Button copy = v.findViewById(R.id.sh_copy);
         Button close = v.findViewById(R.id.sh_close);
+        test.setText("Test Shizuku (self-test)");
 
         final AlertDialog dlg = new AlertDialog.Builder(this).setView(v).create();
 
@@ -1125,7 +1101,7 @@ public class MainActivity extends Activity {
             public void run() {
                 boolean running = ShizukuHelper.isRunning();
                 boolean granted = running && ShizukuHelper.hasPermission();
-                boolean ready = ShizukuHelper.isServiceReady();
+                boolean ready = ShizukuHelper.isReady();
                 if (!running) {
                     state.setText("Shizuku is not running");
                     state.setTextColor(0xFFC62828);
@@ -1136,24 +1112,19 @@ public class MainActivity extends Activity {
                     state.setTextColor(0xFFF57C00);
                     detail.setText("Shizuku is running (API " + ShizukuHelper.version()
                             + ").\nGrant AppMan permission to use force stop and cache clearing.");
-                } else if (!ready) {
-                    state.setText(ShizukuHelper.isBinding()
-                            ? "Starting shell service…" : "Shell service not connected");
-                    state.setTextColor(0xFFF57C00);
-                    detail.setText("Shizuku is running (API " + ShizukuHelper.version()
-                            + ").\nStart the shell service to enable the power tools.");
                 } else {
-                    state.setText("Ready — no root needed");
+                    state.setText("Ready — no root");
                     state.setTextColor(0xFF2E7D32);
                     detail.setText("Shizuku API " + ShizukuHelper.version()
-                            + "  •  shell access\nForce stop, clear cache and clear data "
-                            + "are enabled in every app's details.");
+                            + "  •  server UID " + ShizukuHelper.serverUid()
+                            + "\nMode: system-service binder proxy (no user service)\n"
+                            + "Force stop, clear cache and clear data are enabled in every app's details.");
                 }
                 if (!ShizukuHelper.getLastError().isEmpty()) {
                     detail.append("\n\nLast error: " + ShizukuHelper.getLastError());
                 }
                 grant.setVisibility(running && !granted ? View.VISIBLE : View.GONE);
-                restart.setVisibility(running && granted ? View.VISIBLE : View.GONE);
+                restart.setVisibility(View.GONE);
                 test.setVisibility(ready ? View.VISIBLE : View.GONE);
             }
         };
@@ -1185,19 +1156,11 @@ public class MainActivity extends Activity {
                 ShizukuHelper.requestPermission();
             }
         });
-        restart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                ShizukuHelper.resetService();
-                ShizukuHelper.bindService(getApplicationContext());
-                refresh.run();
-            }
-        });
         test.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dlg.dismiss();
-                runTestShell();
+                runTestShizuku();
             }
         });
         copy.setOnClickListener(new View.OnClickListener() {
@@ -1217,26 +1180,24 @@ public class MainActivity extends Activity {
         dlg.show();
     }
 
-    private void runTestShell() {
+    private void runTestShizuku() {
         if (activeOperation != null && !activeOperation.finished()) {
             Utils.toast(this, "Another operation is still running");
             return;
         }
-        final Operation op = new Operation("Test Shizuku shell");
+        final Operation op = new Operation("Test Shizuku");
         activeOperation = op;
         withShizuku(op, new Runnable() {
             @Override
             public void run() {
-                op.log("$ id");
-                setBusy(true, "Shizuku: id");
+                op.log("Resolving system services…");
                 io.execute(new Runnable() {
                     @Override
                     public void run() {
-                        final ShizukuHelper.Result r = ShizukuHelper.run("id");
+                        final ShizukuHelper.Result r = ShizukuHelper.selfTest();
                         ui.post(new Runnable() {
                             @Override
                             public void run() {
-                                setBusy(false, null);
                                 op.done(r.ok(), r.output);
                             }
                         });

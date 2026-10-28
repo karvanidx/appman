@@ -9,6 +9,8 @@
 They are committed here so AppMan keeps building with plain `javac` + `d8` (no Gradle,
 no network). If you update them, keep all four at the same version.
 
-AppMan uses Shizuku's **user service** API: `Shizuku.bindUserService(...)` starts
-`io.github.karvanidx.appman.ShellService` in a process that runs with the ADB shell UID (2000), which is
-what allows `pm clear` / `am force-stop` without root.
+AppMan uses Shizuku's **system-service binder proxy**: `ShizukuBinderWrapper` +
+`SystemServiceHelper` proxy `IPackageManager` / `IActivityManager` calls as the ADB shell
+identity. AppMan is built with `android:debuggable="true"` so the `ServiceManager` and
+AIDL transaction-code reflection used by `SystemServiceHelper` is allowed. No Shizuku
+user service is required.

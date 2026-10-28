@@ -4,6 +4,7 @@ A tiny, no-root Android app manager and screen-time tracker built entirely insid
 no Gradle, no Android Studio, no Kotlin, no AndroidX. ~94 KB.
 
 - **Package:** `io.github.karvanidx.appman`
+- **Version:** 1.3
 - **Author:** [karvanidx](https://github.com/karvanidx)
 - **Built with:** Pi agent + DeepSeek
 - **License:** MIT
@@ -29,18 +30,23 @@ Each app's details dialog has **Force stop**, **Clear cache**, **Clear data**:
 - `pm clear <pkg>` (extra confirmation)
 
 A small **Shizuku dot** in the app bar shows state at a glance:
-green = shell service ready, amber = running but needs permission/service, gray = off.
+green = authorized, amber = running but permission missing, gray = off.
 Tap it for the **Shizuku status** screen: Open Shizuku, Grant permission,
-**Restart shell service**, **Test shell (id)**, Copy diagnostics.
-Power buttons are disabled (grayed out) until the service is ready.
+**Test Shizuku (self-test)**, Copy diagnostics.
+Power buttons are disabled (grayed out) until Shizuku is authorized.
 
 Every Shizuku action opens a **live operation log** with timestamps, the exact command,
 exit code and output — no more guessing what happened.
 
 Shizuku runs a shell service over **Wireless debugging** (no root, no PC needed).
 Android kills it on reboot, so it must be started again after a reboot.
-Implementation: `Shizuku.bindUserService()` starts `ShellService.java` as the ADB shell
-UID (2000), which is why `pm` / `am` work without root.
+
+Implementation: AppMan uses Shizuku's **system-service binder proxy**
+(`ShizukuBinderWrapper` + `SystemServiceHelper`) to call `IPackageManager` and
+`IActivityManager` as the shell identity — the classic Shizuku API. The Shizuku
+*user-service* path (`bindUserService`) stays stuck on some ROMs, so it is not used.
+AppMan is built with `android:debuggable="true"` (it is a sideloaded personal app) so
+`ServiceManager` and AIDL transaction-code reflection are allowed.
 
 ### Usage analytics
 - **Usage analytics** screen: Today / Last 7 days / Last 30 days
@@ -72,7 +78,7 @@ cd ~/projects/appman
 ./build.sh
 ```
 
-Output: `dist/appman-1.2.apk` (+ `.idsig`), v2+v3 signed.
+Output: `dist/appman-1.3.apk` (+ `.idsig`), v2+v3 signed.
 
 Pipeline: `aapt2 compile/link` → `javac -source 8 -target 8 -bootclasspath android.jar`
 → `d8` → `tools/mkapk.py` (packs `classes.dex`, aligns `resources.arsc` to 4 bytes and
@@ -83,8 +89,8 @@ native libs to 16 KB) → `apksigner sign` (keystore auto-created on first build
 ## Install
 
 ### Tap the APK
-`dist/appman-1.2.apk` is copied to `/sdcard/Download/AppMan/appman-1.2.apk`.
-**Files → Download → AppMan → appman-1.2.apk → Install**.
+`dist/appman-1.3.apk` is copied to `/sdcard/Download/AppMan/appman-1.3.apk`.
+**Files → Download → AppMan → appman-1.3.apk → Install**.
 
 > The package was renamed from `com.appman` to `io.github.karvanidx.appman` in v1.2.
 > It installs as a separate app. Uninstall the old **AppMan 1.1** afterwards to avoid
@@ -95,15 +101,16 @@ Developer options → Wireless debugging (and "Pair device with pairing code"), 
 
 ```bash
 ./adb-pair.sh <pair_ip:port> <6-digit-code> <connect_ip:port>
-adb install -r dist/appman-1.2.apk
+adb install -r dist/appman-1.3.apk
 ```
 
 ## Shizuku setup
 
 1. Open **Shizuku** → **Start via Wireless debugging** (pair if asked).
 2. Open **AppMan** → tap the **Shizuku dot** in the app bar → **Grant permission**.
-3. Tap **Restart shell service** (or just use a power action — it starts on demand).
-4. Optional: **Test shell (id)** should print `uid=2000(shell)`.
+3. Tap **Test Shizuku (self-test)** — it should show the package/activity binders and
+   transaction codes as **ok**, and Shizuku UID `2000`.
+4. Use Force stop / Clear cache / Clear data in any app's details.
 
 ## Project layout
 
@@ -118,8 +125,7 @@ app/src/io/github/karvanidx/appman/
   BackupManager.java          APK backup sessions
   StorageWriter.java          MediaStore (Android 10+) / legacy Downloads
   ApkProvider.java            provider for sharing APKs
-  ShizukuHelper.java          Shizuku binding, state, diagnostics, shell transport
-  ShellService.java           runs as shell (UID 2000) inside Shizuku user service
+  ShizukuHelper.java          Shizuku binder proxy, self-test, diagnostics
   UsageRepo.java              UsageStats / UsageEvents queries
   Utils.java                  sizes, dates, durations, storage stats
 app/libs/                     vendored Shizuku API 13.1.5 (MIT)

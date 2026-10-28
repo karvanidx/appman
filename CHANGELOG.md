@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3
+- Fixed "Starting shell service…" hanging: switched from Shizuku user service to the
+  classic system-service binder proxy (`IPackageManager` / `IActivityManager`)
+- App is built `debuggable` so hidden `ServiceManager` / transaction-code reflection works
+- Shizuku status self-test shows binders, transaction codes and Shizuku UID
+- Power tools are enabled as soon as Shizuku is authorized (no service start step)
+- Operation log now reports binder-call results
+
 ## 1.2
 - Renamed package to `io.github.karvanidx.appman`
 - Shizuku status dot in the app bar (green = shell service ready)

@@ -1,39 +1,60 @@
 package io.github.karvanidx.appman;
 
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Parcel;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import rikka.shizuku.Shizuku;
+import rikka.shizuku.ShizukuBinderWrapper;
+import rikka.shizuku.SystemServiceHelper;
 
 /**
- * Thin wrapper around Shizuku (no-root shell service started over Wireless debugging).
- * Commands run in our own user-service process, which Shizuku starts with the shell UID.
+ * Shizuku client using the system-service binder proxy (the classic API).
+ *
+ * The Shizuku user-service path (bindUserService) is not available on some devices/ROMs,
+ * so AppMan calls IPackageManager / IActivityManager through ShizukuBinderWrapper instead.
+ * Shizuku executes the transaction with the ADB shell identity, which is why pm/am-level
+ * operations work without root.
+ *
+ * AppMan is built with android:debuggable="true" so hidden API reflection (ServiceManager,
+ * transaction codes) is allowed. It is a sideloaded personal app, not a Play Store release.
  */
 public final class ShizukuHelper {
     public static final int REQUEST_CODE = 8801;
     private static final String SHIZUKU_PACKAGE = "moe.shizuku.privileged.api";
+    private static final String SVC_PACKAGE = "package";
+    private static final String SVC_ACTIVITY = "activity";
+    private static final String DESC_PKG = "android.content.pm.IPackageManager";
+    private static final String DESC_ACT = "android.app.IActivityManager";
+    private static final String STUB_PKG = "android.content.pm.IPackageManager$Stub";
+    private static final String STUB_ACT = "android.app.IActivityManager$Stub";
 
     public interface StateListener {
         void onShizukuStateChanged();
     }
 
-    private static final List<StateListener> listeners = new CopyOnWriteArrayList<>();
+    private interface ParcelWriter {
+        void write(Parcel p);
+    }
 
-    private static IBinder shellBinder;
-    private static boolean binding;
+    private static final List<StateListener> listeners = new CopyOnWriteArrayList<>();
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+    private static final Binder DUMMY_OBSERVER = new Binder() {
+        @Override
+        protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
+            return true;
+        }
+    };
     private static String lastError = "";
-    private static long bindingStartedAt;
-    private static Shizuku.UserServiceArgs serviceArgs;
-    private static ServiceConnection connection;
-    private static Runnable onServiceReady;
 
     private ShizukuHelper() {}
 
@@ -54,10 +75,6 @@ public final class ShizukuHelper {
         }
     }
 
-    public static void setOnServiceReady(Runnable r) {
-        onServiceReady = r;
-    }
-
     public static boolean isRunning() {
         try {
             return Shizuku.pingBinder();
@@ -74,13 +91,9 @@ public final class ShizukuHelper {
         }
     }
 
-    public static void requestPermission() {
-        try {
-            Shizuku.requestPermission(REQUEST_CODE);
-        } catch (Throwable t) {
-            lastError = "requestPermission: " + describe(t);
-            notifyStateChanged();
-        }
+    /** Shizuku is running and AppMan is authorized: binder calls are usable. */
+    public static boolean isReady() {
+        return isRunning() && hasPermission();
     }
 
     public static int version() {
@@ -91,120 +104,108 @@ public final class ShizukuHelper {
         }
     }
 
-    public static boolean isServiceReady() {
-        IBinder b = shellBinder;
+    public static int serverUid() {
         try {
-            return b != null && b.isBinderAlive();
+            return Shizuku.getUid();
         } catch (Throwable t) {
-            return false;
+            return -1;
         }
     }
 
-    public static boolean isBinding() {
-        return binding;
+    public static void requestPermission() {
+        try {
+            Shizuku.requestPermission(REQUEST_CODE);
+        } catch (Throwable t) {
+            lastError = describe(t);
+            notifyStateChanged();
+        }
+    }
+
+    public static void notifyPermissionChanged() {
+        lastError = "";
+        notifyStateChanged();
+    }
+
+    public static void onBinderDead() {
+        lastError = "Shizuku service stopped";
+        notifyStateChanged();
     }
 
     public static String getLastError() {
         return lastError;
     }
 
-    public static long getBindingStartedAt() {
-        return bindingStartedAt;
+    // ------------------------------------------------------------- operations
+
+    public static Result forceStop(String pkg) {
+        final int userId = android.os.Process.myUid() / 100000;
+        return transact(SVC_ACTIVITY, DESC_ACT, STUB_ACT, "forceStopPackage",
+                new ParcelWriter() {
+                    @Override
+                    public void write(Parcel p) {
+                        p.writeString(pkg);
+                        p.writeInt(userId);
+                    }
+                });
     }
 
-    public static void onBindTimeout() {
-        if (!isServiceReady()) {
-            binding = false;
-            lastError = "Timed out waiting for the shell service";
-            notifyStateChanged();
-        }
+    public static Result clearCache(String pkg) {
+        final int userId = android.os.Process.myUid() / 100000;
+        return transact(SVC_PACKAGE, DESC_PKG, STUB_PKG, "deleteApplicationCacheFilesAsUser",
+                new ParcelWriter() {
+                    @Override
+                    public void write(Parcel p) {
+                        p.writeString(pkg);
+                        p.writeInt(userId);
+                        p.writeStrongBinder(DUMMY_OBSERVER);
+                    }
+                });
     }
 
-    public static void onBinderDead() {
-        shellBinder = null;
-        binding = false;
-        lastError = "Shizuku service stopped";
-        notifyStateChanged();
+    public static Result clearData(String pkg) {
+        final int userId = android.os.Process.myUid() / 100000;
+        return transact(SVC_PACKAGE, DESC_PKG, STUB_PKG, "clearApplicationUserData",
+                new ParcelWriter() {
+                    @Override
+                    public void write(Parcel p) {
+                        p.writeString(pkg);
+                        p.writeStrongBinder(DUMMY_OBSERVER);
+                        p.writeInt(userId);
+                    }
+                });
     }
 
-    public static void bindService(Context ctx) {
-        if (binding || isServiceReady() || !isRunning() || !hasPermission()) return;
-        binding = true;
-        bindingStartedAt = System.currentTimeMillis();
-        lastError = "";
-        if (serviceArgs == null) {
-            serviceArgs = new Shizuku.UserServiceArgs(
-                    new ComponentName(ctx.getPackageName(), ShellService.class.getName()))
-                    .processNameSuffix("shell")
-                    .version(1)
-                    .debuggable(false)
-                    .daemon(false);
-        }
-        if (connection == null) {
-            connection = new ServiceConnection() {
-                @Override
-                public void onServiceConnected(ComponentName name, IBinder service) {
-                    shellBinder = service;
-                    binding = false;
-                    lastError = "";
-                    notifyStateChanged();
-                    Runnable r = onServiceReady;
-                    if (r != null) r.run();
-                }
-
-                @Override
-                public void onServiceDisconnected(ComponentName name) {
-                    shellBinder = null;
-                    binding = false;
-                    lastError = "Shell service disconnected";
-                    notifyStateChanged();
-                }
-            };
-        }
-        notifyStateChanged();
+    private static Result transact(String serviceName, String descriptor, String stubClass,
+                                   String methodName, ParcelWriter writer) {
+        IBinder target;
+        Integer code;
         try {
-            Shizuku.bindUserService(serviceArgs, connection);
+            target = SystemServiceHelper.getSystemService(serviceName);
+            code = SystemServiceHelper.getTransactionCode(stubClass, methodName);
         } catch (Throwable t) {
-            binding = false;
             lastError = describe(t);
-            notifyStateChanged();
+            return new Result(-1, "Cannot access " + serviceName + ": " + describe(t));
         }
-    }
-
-    /** Fully remove the user service and allow a clean restart. */
-    public static void resetService() {
-        try {
-            if (serviceArgs != null && connection != null) {
-                Shizuku.unbindUserService(serviceArgs, connection, true);
-            }
-        } catch (Throwable ignored) {
+        if (target == null) {
+            lastError = "System service not found: " + serviceName;
+            return new Result(-1, "System service not found: " + serviceName);
         }
-        shellBinder = null;
-        binding = false;
-        lastError = "";
-        serviceArgs = null;
-        connection = null;
-        notifyStateChanged();
-    }
-
-    public static Result run(String command) {
-        IBinder b = shellBinder;
-        if (b == null || !b.isBinderAlive()) {
-            return new Result(-1, "Shizuku shell service is not connected");
+        if (code == null) {
+            lastError = "Unknown transaction: " + methodName;
+            return new Result(-1, "Unknown transaction code for " + methodName);
         }
         Parcel data = Parcel.obtain();
         Parcel reply = Parcel.obtain();
         try {
-            data.writeInterfaceToken(ShellService.DESCRIPTOR);
-            data.writeString(command);
-            if (!b.transact(ShellService.TRANSACTION_RUN, data, reply, 0)) {
-                return new Result(-1, "Shell transaction was rejected");
-            }
+            data.writeInterfaceToken(descriptor);
+            writer.write(data);
+            IBinder proxy = new ShizukuBinderWrapper(target);
+            proxy.transact(code.intValue(), data, reply, 0);
             reply.readException();
-            int code = reply.readInt();
-            String out = reply.readString();
-            return new Result(code, out);
+            lastError = "";
+            return new Result(0, "OK");
         } catch (Throwable t) {
+            lastError = describe(t);
             return new Result(-1, describe(t));
         } finally {
             data.recycle();
@@ -212,22 +213,57 @@ public final class ShizukuHelper {
         }
     }
 
+    public static Result selfTest() {
+        StringBuilder sb = new StringBuilder();
+        boolean ok = true;
+        try {
+            IBinder pkg = SystemServiceHelper.getSystemService(SVC_PACKAGE);
+            IBinder act = SystemServiceHelper.getSystemService(SVC_ACTIVITY);
+            Integer clearData = SystemServiceHelper.getTransactionCode(STUB_PKG,
+                    "clearApplicationUserData");
+            Integer clearCache = SystemServiceHelper.getTransactionCode(STUB_PKG,
+                    "deleteApplicationCacheFilesAsUser");
+            Integer forceStop = SystemServiceHelper.getTransactionCode(STUB_ACT,
+                    "forceStopPackage");
+            sb.append("Shizuku UID: ").append(serverUid()).append('\n');
+            sb.append("package binder: ").append(pkg != null ? "ok" : "missing").append('\n');
+            sb.append("activity binder: ").append(act != null ? "ok" : "missing").append('\n');
+            sb.append("clearData code: ").append(clearData == null ? "unresolved" : clearData).append('\n');
+            sb.append("clearCache code: ").append(clearCache == null ? "unresolved" : clearCache).append('\n');
+            sb.append("forceStop code: ").append(forceStop == null ? "unresolved" : forceStop);
+            ok = pkg != null && act != null && clearData != null
+                    && clearCache != null && forceStop != null;
+        } catch (Throwable t) {
+            ok = false;
+            sb.append("Self-test failed: ").append(describe(t));
+        }
+        return new Result(ok ? 0 : -1, sb.toString());
+    }
+
     public static String diagnostics(Context c) {
         StringBuilder sb = new StringBuilder();
         sb.append("App: ").append(c.getPackageName()).append('\n');
+        sb.append("Debuggable: ").append(isDebuggable(c)).append('\n');
         sb.append("Shizuku installed: ").append(isShizukuInstalled(c)).append('\n');
         sb.append("Shizuku running: ").append(isRunning()).append('\n');
         if (isRunning()) {
             sb.append("Shizuku version: ").append(version()).append('\n');
+            sb.append("Shizuku UID: ").append(serverUid()).append('\n');
             sb.append("Permission: ").append(hasPermission()).append('\n');
-            sb.append("Shell service: ").append(isServiceReady() ? "connected" : (binding ? "connecting" : "not started")).append('\n');
-            if (isServiceReady()) {
-                Result r = run("id");
-                sb.append("id: ").append(r.output).append('\n');
-            }
+            sb.append("Mode: system-service binder proxy\n");
+            Result r = selfTest();
+            sb.append(r.output);
         }
-        if (!lastError.isEmpty()) sb.append("Last error: ").append(lastError).append('\n');
+        if (!lastError.isEmpty()) sb.append("\nLast error: ").append(lastError);
         return sb.toString().trim();
+    }
+
+    public static boolean isDebuggable(Context c) {
+        try {
+            return (c.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private static boolean isShizukuInstalled(Context c) {
