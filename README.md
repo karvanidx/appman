@@ -9,6 +9,8 @@ no Gradle, no Android Studio, no Kotlin, no AndroidX. ~94 KB.
 - **Built with:** Pi agent + DeepSeek
 - **License:** MIT
 
+**[⬇ Download the latest APK](https://github.com/karvanidx/appman/releases/latest)** — see [Releases](https://github.com/karvanidx/appman/releases).
+
 ## Features
 
 ### Apps
