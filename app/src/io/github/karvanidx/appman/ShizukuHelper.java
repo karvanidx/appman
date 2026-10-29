@@ -160,14 +160,15 @@ public final class ShizukuHelper {
 
     public static Result clearCache(String pkg) {
         final int userId = android.os.Process.myUid() / 100000;
-        DataObserver observer = new DataObserver();
+        // Some Android 16 ROMs clear the cache but never deliver onRemoveCompleted,
+        // so do not wait for the observer here (it would always time out).
         return transact(SVC_PACKAGE, DESC_PKG, STUB_PKG, "deleteApplicationCacheFilesAsUser",
-                CODE_CLEAR_CACHE, false, observer, new ParcelWriter() {
+                CODE_CLEAR_CACHE, false, null, new ParcelWriter() {
                     @Override
                     public void write(Parcel p) {
                         p.writeString(pkg);
                         p.writeInt(userId);
-                        p.writeStrongBinder(observer);
+                        p.writeStrongBinder(DUMMY_OBSERVER);
                     }
                 });
     }
@@ -289,7 +290,8 @@ public final class ShizukuHelper {
 
     public static String diagnostics(Context c) {
         StringBuilder sb = new StringBuilder();
-        sb.append("App: ").append(c.getPackageName()).append('\n');
+        sb.append("App: ").append(c.getPackageName()).append(" ")
+                .append(appVersion(c)).append('\n');
         sb.append("Debuggable: ").append(isDebuggable(c)).append('\n');
         sb.append("Shizuku installed: ").append(isShizukuInstalled(c)).append('\n');
         sb.append("Shizuku running: ").append(isRunning()).append('\n');
@@ -303,6 +305,14 @@ public final class ShizukuHelper {
         }
         if (!lastError.isEmpty()) sb.append("\nLast error: ").append(lastError);
         return sb.toString().trim();
+    }
+
+    private static String appVersion(Context c) {
+        try {
+            return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+        } catch (Throwable t) {
+            return "?";
+        }
     }
 
     public static boolean isDebuggable(Context c) {

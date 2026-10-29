@@ -4,7 +4,7 @@ A tiny, no-root Android app manager and screen-time tracker built entirely insid
 no Gradle, no Android Studio, no Kotlin, no AndroidX. ~94 KB.
 
 - **Package:** `io.github.karvanidx.appman`
-- **Version:** 1.3.1
+- **Version:** 1.4
 - **Author:** [karvanidx](https://github.com/karvanidx)
 - **Built with:** Pi agent + DeepSeek
 - **License:** MIT
@@ -26,7 +26,7 @@ no Gradle, no Android Studio, no Kotlin, no AndroidX. ~94 KB.
 ### Shizuku power tools (no root)
 Each app's details dialog has **Force stop**, **Clear cache**, **Clear data**:
 - `am force-stop <pkg>`
-- `pm clear --cache-only <pkg>`
+- `deleteApplicationCacheFilesAsUser(<pkg>)` (cache; some ROMs never send the completion callback, so it is fire-and-request)
 - `pm clear <pkg>` (extra confirmation)
 
 A small **Shizuku dot** in the app bar shows state at a glance:
@@ -49,11 +49,17 @@ AppMan is built with `android:debuggable="true"` (it is a sideloaded personal ap
 `ServiceManager` and AIDL transaction-code reflection are allowed.
 
 ### Usage analytics
-- **Usage analytics** screen: Today / Last 7 days / Last 30 days
-- Total screen time, apps used, total launches
+- **Usage analytics** screen: Today / Last 7 days / Last 30 days (segmented control)
+- Screen-time summary card, apps used, total launches
 - Per-app screen time with a bar, launch count and last-used time
+- Tap an app → **session history**: every open/close with start time, end time and duration
 - Requires the same **Usage access** permission already used for data/cache sizes
 - Recent-app sorting uses `lastUsed` from `UsageStatsManager`
+
+### Advanced details
+- **Native libraries** viewer: lists every `.so` inside the APK(s), ABI and size
+- Long-press tooltips on buttons and the Shizuku dot
+- Power buttons cool down after use (Clear data stays disabled until you reopen details)
 
 ## No-root limitations
 
@@ -78,7 +84,7 @@ cd ~/projects/appman
 ./build.sh
 ```
 
-Output: `dist/appman-1.3.1.apk` (+ `.idsig`), v2+v3 signed.
+Output: `dist/appman-1.4.apk` (+ `.idsig`), v2+v3 signed.
 
 Pipeline: `aapt2 compile/link` → `javac -source 8 -target 8 -bootclasspath android.jar`
 → `d8` → `tools/mkapk.py` (packs `classes.dex`, aligns `resources.arsc` to 4 bytes and
@@ -89,8 +95,8 @@ native libs to 16 KB) → `apksigner sign` (keystore auto-created on first build
 ## Install
 
 ### Tap the APK
-`dist/appman-1.3.1.apk` is copied to `/sdcard/Download/AppMan/appman-1.3.1.apk`.
-**Files → Download → AppMan → appman-1.3.1.apk → Install**.
+`dist/appman-1.4.apk` is copied to `/sdcard/Download/AppMan/appman-1.4.apk`.
+**Files → Download → AppMan → appman-1.4.apk → Install**.
 
 > The package was renamed from `com.appman` to `io.github.karvanidx.appman` in v1.2.
 > It installs as a separate app. Uninstall the old **AppMan 1.1** afterwards to avoid
@@ -101,7 +107,7 @@ Developer options → Wireless debugging (and "Pair device with pairing code"), 
 
 ```bash
 ./adb-pair.sh <pair_ip:port> <6-digit-code> <connect_ip:port>
-adb install -r dist/appman-1.3.1.apk
+adb install -r dist/appman-1.4.apk
 ```
 
 ## Shizuku setup
@@ -126,7 +132,8 @@ app/src/io/github/karvanidx/appman/
   StorageWriter.java          MediaStore (Android 10+) / legacy Downloads
   ApkProvider.java            provider for sharing APKs
   ShizukuHelper.java          Shizuku binder proxy, self-test, diagnostics
-  UsageRepo.java              UsageStats / UsageEvents queries
+  UsageRepo.java              UsageStats / UsageEvents, sessions
+  NativeLibs.java             .so listing inside APKs
   Utils.java                  sizes, dates, durations, storage stats
 app/libs/                     vendored Shizuku API 13.1.5 (MIT)
 tools/mkapk.py                packaging + zipalign

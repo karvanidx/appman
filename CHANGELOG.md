@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4
+- Cache clear no longer times out: the system clears it but never sends the completion
+  callback on this ROM, so the result is "requested" and sizes refresh afterwards
+- Power buttons disable while an operation runs; Force stop / Clear cache cool down for
+  3 seconds, Clear data stays disabled until the details dialog is reopened
+- Long-press tooltips on toolbar, selection, details and Shizuku buttons
+- Native libraries viewer (ABI, name, size, total, copy list)
+- Usage analytics redesigned: segmented Today / 7 days / 30 days + summary card
+- Tap an analytics row for **session history** (opened at, closed at, duration, ongoing)
+- Diagnostics now include the AppMan version
+
 ## 1.3.1
 - Android 16 QPR compatibility: transaction codes are now taken from this device's
   `framework.jar` as a fallback (`forceStopPackage=85`, `deleteApplicationCacheFilesAsUser=98`,

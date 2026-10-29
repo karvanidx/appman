@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/libs_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Native libraries"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/libs_sub"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Loading…"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <ScrollView
+        android:id="@+id/libs_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_marginTop="10dp"
+        android:background="#F5F6F8"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/libs_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textColor="#37474F"
+            android:textSize="11sp" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/libs_copy"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:minWidth="0dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:text="Copy list"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/libs_close"
+            android:layout_width="wrap_content"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:minWidth="0dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:text="Close"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
+    </LinearLayout>
+</LinearLayout>

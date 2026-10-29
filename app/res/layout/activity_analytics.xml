@@ -48,96 +48,106 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#FFFFFF"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:paddingStart="14dp"
         android:paddingEnd="14dp"
+        android:paddingTop="10dp"
         android:paddingBottom="10dp">
+
+        <TextView
+            android:id="@+id/an_range_today"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_seg_normal"
+            android:gravity="center"
+            android:text="Today"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/an_range_week"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_seg_normal"
+            android:gravity="center"
+            android:text="7 days"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/an_range_month"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_seg_normal"
+            android:gravity="center"
+            android:text="30 days"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Screen time"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/an_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="—"
+            android:textColor="@color/primary"
+            android:textSize="34sp"
+            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/an_apps"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:text="— apps used"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Screen time"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/an_time"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="@color/text_primary"
-                    android:textSize="19sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/an_launches"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Apps used"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/an_apps"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="@color/text_primary"
-                    android:textSize="19sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Launches"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/an_launches"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="@color/text_primary"
-                    android:textSize="19sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                android:layout_marginStart="16dp"
+                android:text="— launches"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
         </LinearLayout>
-
-        <Spinner
-            android:id="@+id/an_range"
-            android:layout_width="match_parent"
-            android:layout_height="42dp"
-            android:layout_marginTop="4dp" />
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
+        android:layout_marginTop="12dp"
         android:background="@color/divider" />
 
     <FrameLayout
@@ -168,7 +178,7 @@
                 android:gravity="center"
                 android:text="No usage data yet"
                 android:textColor="@color/text_secondary"
-                android:textSize="17sp" />
+                android:textSize="16sp" />
 
             <Button
                 android:id="@+id/an_grant"

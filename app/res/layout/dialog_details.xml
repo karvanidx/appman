@@ -253,5 +253,19 @@
             android:text="Power tools use Shizuku (shell access over Wireless debugging, no root)."
             android:textColor="@color/text_secondary"
             android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/d_libs"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="start|center_vertical"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="Native libraries"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
     </LinearLayout>
 </ScrollView>

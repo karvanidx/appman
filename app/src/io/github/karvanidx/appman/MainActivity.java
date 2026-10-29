@@ -94,6 +94,7 @@ public class MainActivity extends Activity {
 
     private Runnable pendingShizukuAction;
     private Operation activeOperation;
+    private Runnable detailsRefresh;
     private Shizuku.OnRequestPermissionResultListener shizukuPermListener;
     private Shizuku.OnBinderReceivedListener shizukuBinderListener;
     private Shizuku.OnBinderDeadListener shizukuDeadListener;
@@ -212,6 +213,14 @@ public class MainActivity extends Activity {
                 etSearch.setText("");
             }
         });
+        tip(findViewById(R.id.btn_refresh), "Refresh the installed app list");
+        tip(findViewById(R.id.btn_menu), "More actions: analytics, backup, export");
+        tip(findViewById(R.id.btn_clear), "Clear the search box");
+        tip(findViewById(R.id.shizuku_chip), "Shizuku status, permission and self-test");
+        tip(findViewById(R.id.btn_backup_sel), "Back up selected APKs");
+        tip(findViewById(R.id.btn_share_sel), "Share the selected APK");
+        tip(findViewById(R.id.btn_uninstall_sel), "Uninstall selected apps");
+        tip(findViewById(R.id.btn_cancel_sel), "Exit selection mode");
         findViewById(R.id.shizuku_chip).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -476,7 +485,7 @@ public class MainActivity extends Activity {
 
     private void showAbout() {
         new AlertDialog.Builder(this)
-                .setTitle("AppMan 1.3.1")
+                .setTitle("AppMan 1.4")
                 .setMessage("A lightweight no-root app manager and usage tracker, built in Termux.\n\n"
                         + "• Lists all installed apps (user + system)\n"
                         + "• Backup APKs (including split APKs) to Download/AppMan\n"
@@ -710,6 +719,7 @@ public class MainActivity extends Activity {
         Button forceStop = v.findViewById(R.id.d_force_stop);
         Button clearCache = v.findViewById(R.id.d_clear_cache);
         Button clearData = v.findViewById(R.id.d_clear_data);
+        Button libs = v.findViewById(R.id.d_libs);
 
         icon.setImageDrawable(e.icon != null ? e.icon
                 : getDrawable(android.R.drawable.sym_def_app_icon));
@@ -734,24 +744,61 @@ public class MainActivity extends Activity {
         sb.append("APK: ").append(e.sourceDir);
         info.setText(sb.toString());
 
-        loadSizesInto(sizes, usage, e);
-
         final AlertDialog dlg = new AlertDialog.Builder(this)
                 .setView(v)
                 .setNegativeButton("Close", null)
                 .create();
 
+        tip(v.findViewById(R.id.d_open), "Open this app");
+        tip(v.findViewById(R.id.d_backup), "Back up this app's APK");
+        tip(v.findViewById(R.id.d_share), "Share this app's APK");
+        tip(v.findViewById(R.id.d_appinfo), "Open Android App info (clear cache/data, force stop)");
+        tip(v.findViewById(R.id.d_copy), "Copy the package name");
+        tip(v.findViewById(R.id.d_uninstall), "Uninstall this app");
+        tip(usage, "Grant usage access to show storage and usage stats");
+        tip(shizukuStatus, "Shizuku status and setup");
+        tip(libs, "List native .so libraries inside this app's APK");
+        libs.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dlg.dismiss();
+                openNativeLibs(e);
+            }
+        });
+        final Button libsButton = libs;
+        io.execute(new Runnable() {
+            @Override
+            public void run() {
+                final int count = NativeLibs.list(e).size();
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (dlg.isShowing()) {
+                            libsButton.setText(count == 0
+                                    ? "Native libraries (none)"
+                                    : "Native libraries (" + count + ")");
+                        }
+                    }
+                });
+            }
+        });
+        loadSizesInto(sizes, usage, e);
+
+        final java.util.Set<Button> cooling = new java.util.HashSet<>();
         final Runnable refreshPower = new Runnable() {
             @Override
             public void run() {
                 boolean ready = ShizukuHelper.isReady();
-                forceStop.setEnabled(ready);
-                clearCache.setEnabled(ready);
-                clearData.setEnabled(ready);
-                float alpha = ready ? 1f : 0.42f;
-                forceStop.setAlpha(alpha);
-                clearCache.setAlpha(alpha);
-                clearData.setAlpha(alpha);
+                boolean busy = activeOperation != null && !activeOperation.finished();
+                boolean fs = ready && !busy && !cooling.contains(forceStop);
+                boolean cc = ready && !busy && !cooling.contains(clearCache);
+                boolean cd = ready && !busy && !cooling.contains(clearData);
+                forceStop.setEnabled(fs);
+                clearCache.setEnabled(cc);
+                clearData.setEnabled(cd);
+                forceStop.setAlpha(fs ? 1f : 0.42f);
+                clearCache.setAlpha(cc ? 1f : 0.42f);
+                clearData.setAlpha(cd ? 1f : 0.42f);
                 if (!ShizukuHelper.isRunning()) {
                     shizukuStatus.setText("Shizuku is off — tap to set up (no root needed)");
                     shizukuStatus.setTextColor(0xFFC62828);
@@ -764,6 +811,7 @@ public class MainActivity extends Activity {
                 }
             }
         };
+        detailsRefresh = refreshPower;
         refreshPower.run();
         shizukuStatus.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -782,6 +830,7 @@ public class MainActivity extends Activity {
             @Override
             public void onDismiss(DialogInterface dialog) {
                 ShizukuHelper.removeStateListener(dialogListener);
+                if (detailsRefresh == refreshPower) detailsRefresh = null;
             }
         });
 
@@ -839,6 +888,9 @@ public class MainActivity extends Activity {
             }
         });
 
+        tip(forceStop, "Force stop this app via Shizuku");
+        tip(clearCache, "Clear this app's cache via Shizuku");
+        tip(clearData, "Erase all data of this app via Shizuku");
         forceStop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -849,7 +901,27 @@ public class MainActivity extends Activity {
                             public ShizukuHelper.Result run() {
                                 return ShizukuHelper.forceStop(e.pkg);
                             }
+                        }, new Runnable() {
+                            @Override
+                            public void run() {
+                                cooling.add(forceStop);
+                                refreshPower.run();
+                                ui.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        cooling.remove(forceStop);
+                                        refreshPower.run();
+                                    }
+                                }, 3000);
+                            }
+                        }, new Runnable() {
+                            @Override
+                            public void run() {
+                                cooling.remove(forceStop);
+                                refreshPower.run();
+                            }
                         });
+                refreshPower.run();
             }
         });
         clearCache.setOnClickListener(new View.OnClickListener() {
@@ -857,12 +929,32 @@ public class MainActivity extends Activity {
             public void onClick(View view) {
                 powerAction(e, "Clear cache · " + e.label,
                         "deleteApplicationCacheFilesAsUser(" + e.pkg + ")",
-                        "Cache cleared for " + e.label, refreshSizes, new PowerCall() {
+                        "Cache clear requested for " + e.label, refreshSizes, new PowerCall() {
                             @Override
                             public ShizukuHelper.Result run() {
                                 return ShizukuHelper.clearCache(e.pkg);
                             }
+                        }, new Runnable() {
+                            @Override
+                            public void run() {
+                                cooling.add(clearCache);
+                                refreshPower.run();
+                                ui.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        cooling.remove(clearCache);
+                                        refreshPower.run();
+                                    }
+                                }, 3000);
+                            }
+                        }, new Runnable() {
+                            @Override
+                            public void run() {
+                                cooling.remove(clearCache);
+                                refreshPower.run();
+                            }
                         });
+                refreshPower.run();
             }
         });
         clearData.setOnClickListener(new View.OnClickListener() {
@@ -882,7 +974,20 @@ public class MainActivity extends Activity {
                                             public ShizukuHelper.Result run() {
                                                 return ShizukuHelper.clearData(e.pkg);
                                             }
+                                        }, new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                cooling.add(clearData);
+                                                refreshPower.run();
+                                            }
+                                        }, new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                cooling.remove(clearData);
+                                                refreshPower.run();
+                                            }
                                         });
+                                refreshPower.run();
                             }
                         })
                         .setNegativeButton("Cancel", null)
@@ -891,6 +996,58 @@ public class MainActivity extends Activity {
         });
 
         dlg.show();
+    }
+
+    private void openNativeLibs(final AppEntry e) {
+        View v = getLayoutInflater().inflate(R.layout.dialog_libs, null);
+        final TextView text = v.findViewById(R.id.libs_text);
+        final TextView sub = v.findViewById(R.id.libs_sub);
+        final AlertDialog dlg = new AlertDialog.Builder(this).setView(v).create();
+        final StringBuilder copy = new StringBuilder();
+        sub.setText(e.label + "  •  " + e.pkg + "\nScanning APK…");
+        v.findViewById(R.id.libs_copy).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Utils.copyText(MainActivity.this, "Native libraries", copy.toString());
+            }
+        });
+        v.findViewById(R.id.libs_close).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dlg.dismiss();
+            }
+        });
+        dlg.show();
+        io.execute(new Runnable() {
+            @Override
+            public void run() {
+                final java.util.List<NativeLibs.Lib> libs = NativeLibs.list(e);
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) return;
+                        sub.setText(e.label + "  •  " + e.pkg + "\n"
+                                + libs.size() + " libraries  •  "
+                                + Utils.humanSize(NativeLibs.totalSize(libs)));
+                        if (libs.isEmpty()) {
+                            text.setText("This app has no native .so libraries.");
+                            copy.append("No native libraries");
+                            return;
+                        }
+                        StringBuilder sb = new StringBuilder();
+                        sb.append(String.format(Locale.US, "%-10s %9s  %s\n", "ABI", "SIZE", "LIBRARY"));
+                        sb.append("----------------------------------------------\n");
+                        for (NativeLibs.Lib l : libs) {
+                            String line = String.format(Locale.US, "%-10s %9s  %s", l.abi,
+                                    Utils.humanSize(l.size), l.name);
+                            sb.append(line).append('\n');
+                        }
+                        text.setText(sb.toString());
+                        copy.append(sub.getText()).append('\n').append(sb);
+                    }
+                });
+            }
+        });
     }
 
     private void loadSizesInto(final TextView target, final View usageBtn, final AppEntry e) {
@@ -1044,7 +1201,8 @@ public class MainActivity extends Activity {
 
     private void powerAction(final AppEntry e, String title, final String label,
                              final String success, final Runnable after,
-                             final PowerCall call) {
+                             final PowerCall call, final Runnable onSuccess,
+                             final Runnable onError) {
         if (activeOperation != null && !activeOperation.finished()) {
             Utils.toast(this, "Another operation is still running");
             return;
@@ -1071,8 +1229,10 @@ public class MainActivity extends Activity {
                                 if (r.ok()) {
                                     op.done(true, success);
                                     if (after != null) ui.postDelayed(after, 800);
+                                    if (onSuccess != null) onSuccess.run();
                                 } else {
                                     op.done(false, r.message());
+                                    if (onError != null) onError.run();
                                 }
                             }
                         });
@@ -1298,6 +1458,8 @@ public class MainActivity extends Activity {
             close.setEnabled(true);
             if (activeOperation == this) activeOperation = null;
             pendingShizukuAction = null;
+            Runnable refresh = detailsRefresh;
+            if (refresh != null) ui.post(refresh);
         }
 
         boolean finished() {
@@ -1366,6 +1528,12 @@ public class MainActivity extends Activity {
     }
 
     // -------------------------------------------------------------- ui helpers
+
+    private void tip(View v, String text) {
+        if (v != null && Build.VERSION.SDK_INT >= 26) {
+            v.setTooltipText(text);
+        }
+    }
 
     private void setBusy(boolean busy, String message) {
         statusBar.setVisibility(busy ? View.VISIBLE : View.GONE);
