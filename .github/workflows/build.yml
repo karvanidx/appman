@@ -22,13 +22,15 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install platform + build-tools
+      - name: Install Android platform + build-tools
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_SDK=$SDK" >> "$GITHUB_ENV"
+          echo "SDK=$SDK"
+          find "$SDK/cmdline-tools" -maxdepth 3 -name sdkmanager -type f 2>/dev/null || true
+          SDKMGR=$(find "$SDK/cmdline-tools" -maxdepth 3 -name sdkmanager -type f | head -1)
+          yes | "$SDKMGR" --sdk_root="$SDK" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" --sdk_root="$SDK" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Restore release keystore (optional)
         env:
@@ -43,8 +45,8 @@ jobs:
 
       - name: Build
         run: |
-          export ANDROID_JAR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/platforms/android-36/android.jar"
-          export PATH="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0:$PATH"
+          export ANDROID_JAR="$ANDROID_SDK/platforms/android-36/android.jar"
+          export PATH="$ANDROID_SDK/build-tools/36.0.0:$PATH"
           chmod +x build.sh tools/mkapk.py
           ./build.sh
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
