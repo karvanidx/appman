@@ -48,7 +48,7 @@ jobs:
           export ANDROID_JAR="$ANDROID_SDK/platforms/android-36/android.jar"
           export PATH="$ANDROID_SDK/build-tools/36.0.0:$PATH"
           chmod +x build.sh tools/mkapk.py
-          ./build.sh
+          bash build.sh
           sha256sum dist/*.apk > dist/SHA256SUMS.txt
           cat dist/SHA256SUMS.txt
 
