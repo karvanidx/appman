@@ -83,7 +83,13 @@ public class AppAdapter extends BaseAdapter {
         h.name.setText(e.label);
         h.pkg.setText(e.pkg);
         h.size.setText(Utils.humanSize(e.apkSize));
-        h.type.setText(e.system ? "System" : "User");
+        if (e.running) {
+            h.type.setText("Running");
+            h.type.setTextColor(0xFF2E7D32);
+        } else {
+            h.type.setText(e.system ? "System" : "User");
+            h.type.setTextColor(0xFF6B7280);
+        }
 
         if (e.icon != null) h.icon.setImageDrawable(e.icon);
         else h.icon.setImageResource(android.R.drawable.sym_def_app_icon);

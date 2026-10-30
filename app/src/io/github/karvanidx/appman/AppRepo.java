@@ -31,6 +31,7 @@ public final class AppRepo {
         long now = System.currentTimeMillis();
         java.util.Map<String, UsageStats> usage =
                 UsageRepo.query(ctx, now - 30L * 24 * 60 * 60 * 1000, now);
+        java.util.Set<String> active = UsageRepo.activePackages(ctx);
 
         int n = 0;
         for (PackageInfo pi : packages) {
@@ -51,6 +52,7 @@ public final class AppRepo {
             }
             e.system = (ai.flags & (ApplicationInfo.FLAG_SYSTEM
                     | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0;
+            e.running = active.contains(pi.packageName);
             e.sourceDir = ai.sourceDir;
             e.splitDirs = ai.splitSourceDirs;
             e.updated = pi.lastUpdateTime;

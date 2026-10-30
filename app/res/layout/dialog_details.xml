@@ -267,5 +267,19 @@
             android:textAllCaps="false"
             android:textColor="@color/primary"
             android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/d_export"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:gravity="start|center_vertical"
+            android:minWidth="0dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            android:text="Export APKs + native libs (.zip)"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="14sp" />
     </LinearLayout>
 </ScrollView>

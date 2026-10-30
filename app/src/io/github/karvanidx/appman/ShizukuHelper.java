@@ -46,6 +46,7 @@ public final class ShizukuHelper {
     private static final int CODE_CLEAR_DATA = 81;   // IActivityManager.clearApplicationUserData
     private static final int CODE_CLEAR_CACHE = 98;  // IPackageManager.deleteApplicationCacheFilesAsUser
     private static final int CODE_FORCE_STOP = 85;   // IActivityManager.forceStopPackage
+    private static final int CODE_DELETE = 51;       // IPackageManager.deletePackageAsUser
 
     public interface StateListener {
         void onShizukuStateChanged();
@@ -145,6 +146,66 @@ public final class ShizukuHelper {
     }
 
     // ------------------------------------------------------------- operations
+
+    public static Result uninstall(String pkg) {
+        IBinder target;
+        try {
+            target = SystemServiceHelper.getSystemService(SVC_PACKAGE);
+        } catch (Throwable t) {
+            return new Result(-1, "Cannot access package service: " + describe(t));
+        }
+        if (target == null) return new Result(-1, "Package service not found");
+        int code = resolveCode(STUB_PKG, "deletePackageAsUser", CODE_DELETE);
+        DeleteObserver observer = new DeleteObserver(pkg);
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        try {
+            data.writeInterfaceToken(DESC_PKG);
+            data.writeString(pkg);
+            data.writeInt(-1); // VERSION_CODE_HIGHEST
+            data.writeStrongBinder(observer);
+            data.writeInt(android.os.Process.myUid() / 100000); // userId
+            data.writeInt(0); // flags
+            IBinder proxy = new ShizukuBinderWrapper(target);
+            proxy.transact(code, data, reply, 0);
+            reply.readException();
+            if (!observer.latch.await(60, TimeUnit.SECONDS)) {
+                return new Result(-1, "Timed out waiting for uninstall to finish");
+            }
+            if (observer.returnCode != 1) {
+                return new Result(-1, "Uninstall failed (code " + observer.returnCode + ")");
+            }
+            return new Result(0, "Uninstalled");
+        } catch (Throwable t) {
+            return new Result(-1, describe(t));
+        } finally {
+            data.recycle();
+            reply.recycle();
+        }
+    }
+
+    private static final class DeleteObserver extends Binder {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final String expected;
+        volatile int returnCode = Integer.MIN_VALUE;
+
+        DeleteObserver(String expected) {
+            this.expected = expected;
+        }
+
+        @Override
+        protected boolean onTransact(int code, Parcel data, Parcel reply, int flags)
+                throws RemoteException {
+            if (code == 1) {
+                data.enforceInterface("android.content.pm.IPackageDeleteObserver");
+                data.readString();
+                returnCode = data.readInt();
+                latch.countDown();
+                return true;
+            }
+            return super.onTransact(code, data, reply, flags);
+        }
+    }
 
     public static Result forceStop(String pkg) {
         final int userId = android.os.Process.myUid() / 100000;

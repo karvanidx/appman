@@ -248,6 +248,14 @@
             android:textColor="@color/primary"
             android:textSize="15sp" />
 
+        <ImageButton
+            android:id="@+id/btn_power_sel"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Shizuku actions"
+            android:src="@drawable/ic_power" />
+
         <Button
             android:id="@+id/btn_uninstall_sel"
             android:layout_width="wrap_content"

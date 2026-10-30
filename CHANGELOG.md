@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5
+- Batch Shizuku actions on multi-select: force stop / clear cache / clear data
+- **Running now** filter (foreground packages from UsageEvents + running processes)
+- Export package `.zip`: base APK, split APKs, every native lib, `info.txt`, `libs.csv`
+- Uninstall now offers **Via Shizuku** (silent, live operation log) or **Android dialog**
+- Android uninstall path reports whether the package is really gone
+- About links for Pi (pi.dev) and DeepSeek Flash are clickable
+- GitHub Actions workflow builds the APK and uploads it as an artifact
+
 ## 1.4
 - Cache clear no longer times out: the system clears it but never sends the completion
   callback on this ROM, so the result is "requested" and sizes refresh afterwards

@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
     private List<AppEntry> pendingBackup;
     private volatile boolean cancelBackup;
     private final ArrayDeque<String> uninstallQueue = new ArrayDeque<>();
+    private String currentUninstallPkg;
 
     private Runnable pendingShizukuAction;
     private Operation activeOperation;
@@ -153,7 +154,7 @@ public class MainActivity extends Activity {
     private void setupSpinners() {
         ArrayAdapter<String> fa = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
-                new String[]{"All apps", "User apps", "System apps"});
+                new String[]{"All apps", "User apps", "System apps", "Running now"});
         fa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spFilter.setAdapter(fa);
         spFilter.setSelection(filterMode);
@@ -161,6 +162,10 @@ public class MainActivity extends Activity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 filterMode = position;
+                if (filterMode == 3 && !Utils.usageAccessGranted(MainActivity.this)) {
+                    Utils.toast(MainActivity.this,
+                            "Running filter uses usage access (menu → Usage access settings)");
+                }
                 applyFilter();
             }
 
@@ -220,6 +225,7 @@ public class MainActivity extends Activity {
         tip(findViewById(R.id.btn_backup_sel), "Back up selected APKs");
         tip(findViewById(R.id.btn_share_sel), "Share the selected APK");
         tip(findViewById(R.id.btn_uninstall_sel), "Uninstall selected apps");
+        tip(findViewById(R.id.btn_power_sel), "Batch Shizuku actions: force stop / clear cache / clear data");
         tip(findViewById(R.id.btn_cancel_sel), "Exit selection mode");
         findViewById(R.id.shizuku_chip).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -284,6 +290,12 @@ public class MainActivity extends Activity {
                 if (!pkgs.isEmpty()) confirmUninstall(pkgs);
             }
         });
+        findViewById(R.id.btn_power_sel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showBatchPower(v);
+            }
+        });
         findViewById(R.id.btn_cancel_sel).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -342,6 +354,7 @@ public class MainActivity extends Activity {
         for (AppEntry e : allApps) {
             if (filterMode == 1 && e.system) continue;
             if (filterMode == 2 && !e.system) continue;
+            if (filterMode == 3 && !e.running) continue;
             if (!q.isEmpty() && !e.searchText.contains(q)) continue;
             shown.add(e);
             total += e.apkSize;
@@ -484,22 +497,30 @@ public class MainActivity extends Activity {
     }
 
     private void showAbout() {
-        new AlertDialog.Builder(this)
-                .setTitle("AppMan 1.4")
-                .setMessage("A lightweight no-root app manager and usage tracker, built in Termux.\n\n"
-                        + "• Lists all installed apps (user + system)\n"
-                        + "• Backup APKs (including split APKs) to Download/AppMan\n"
-                        + "• Share APK files\n"
-                        + "• Uninstall via the Android confirmation dialog\n"
-                        + "• Export the app list as CSV\n"
-                        + "• Screen time, launches and last-used analytics\n"
-                        + "• Force stop / clear cache / clear data via Shizuku (binder mode)\n\n"
-                        + "Clear cache & data of other apps needs Shizuku (shell access over "
-                        + "Wireless debugging, no root).\n\n"
-                        + "Built with Pi agent + DeepSeek.\n"
-                        + "github.com/karvanidx")
+        String html = "<b>AppMan 1.4</b><br><br>"
+                + "A lightweight no-root app manager and usage tracker, built in Termux.<br><br>"
+                + "• Lists all installed apps (user + system)<br>"
+                + "• Backup APKs (including split APKs)<br>"
+                + "• Export APKs + native libs as a zip<br>"
+                + "• Share APK files<br>"
+                + "• Uninstall via Android dialog or silently via Shizuku<br>"
+                + "• Screen time, launches and session history<br>"
+                + "• Force stop / clear cache / clear data via Shizuku<br><br>"
+                + "Clear cache &amp; data of other apps needs Shizuku (shell access over "
+                + "Wireless debugging, no root).<br><br>"
+                + "Built with <a href=\"https://pi.dev/\">Pi agent</a> + "
+                + "<a href=\"https://www.deepseek.com/en/news/deepseek-v4-1-flash/\">DeepSeek Flash</a>.<br>"
+                + "<a href=\"https://github.com/karvanidx/appman\">github.com/karvanidx/appman</a>";
+        AlertDialog d = new AlertDialog.Builder(this)
+                .setTitle("About AppMan")
+                .setMessage(android.text.Html.fromHtml(html, android.text.Html.FROM_HTML_MODE_LEGACY))
                 .setPositiveButton("OK", null)
-                .show();
+                .create();
+        d.show();
+        TextView tv = d.findViewById(android.R.id.message);
+        if (tv != null) {
+            tv.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
+        }
     }
 
     // ---------------------------------------------------------------- backup
@@ -638,31 +659,138 @@ public class MainActivity extends Activity {
 
     // -------------------------------------------------------------- uninstall
 
+    private boolean isPackageInstalled(String pkg) {
+        try {
+            pm.getPackageInfo(pkg, 0);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private void confirmUninstall(List<String> pkgs) {
         if (pkgs.isEmpty()) return;
+        if (activeOperation != null && !activeOperation.finished()) {
+            Utils.toast(this, "Another operation is still running");
+            return;
+        }
         String title;
         String message;
         if (pkgs.size() == 1) {
             AppEntry e = byPkg.get(pkgs.get(0));
             title = "Uninstall";
-            message = "Uninstall " + (e != null ? e.label : pkgs.get(0)) + "?\n\n"
-                    + "Android will ask you to confirm. System apps may only be disabled.";
+            message = "Uninstall " + (e != null ? e.label : pkgs.get(0)) + "?";
         } else {
             title = "Uninstall " + pkgs.size() + " apps";
-            message = "You will be asked to confirm each app.\n\n"
-                    + "System apps may only be disabled.";
+            message = "Uninstall these " + pkgs.size() + " apps?";
         }
-        new AlertDialog.Builder(this)
+        boolean ready = ShizukuHelper.isReady();
+        message += ready
+                ? "\n\nVia Shizuku: silent, no system popup, live log (system apps may fail)."
+                + "\nAndroid dialog: the normal system confirmation."
+                : "\n\nShizuku is not ready, so only the Android confirmation dialog is available.";
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton("Continue", new DialogInterface.OnClickListener() {
+                .setNegativeButton("Cancel", null);
+        if (ready) {
+            b.setPositiveButton("Via Shizuku", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    uninstallViaShizuku(pkgs);
+                }
+            });
+            b.setNeutralButton("Android dialog", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    requestUninstall(pkgs);
+                }
+            });
+        } else {
+            b.setPositiveButton("Android dialog", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    requestUninstall(pkgs);
+                }
+            });
+        }
+        b.show();
+    }
+
+    private void uninstallViaShizuku(final List<String> pkgs) {
+        if (!ShizukuHelper.isReady()) {
+            showShizukuStatus();
+            return;
+        }
+        if (activeOperation != null && !activeOperation.finished()) {
+            Utils.toast(this, "Another operation is still running");
+            return;
+        }
+        final Operation op = new Operation("Uninstall " + pkgs.size()
+                + (pkgs.size() == 1 ? " app" : " apps"));
+        activeOperation = op;
+        withShizuku(op, new Runnable() {
+            @Override
+            public void run() {
+                if (selectionMode) exitSelection();
+                setBusy(true, "Uninstalling " + pkgs.size() + " app(s)");
+                op.log("Uninstalling " + pkgs.size() + " package(s)…");
+                io.execute(new Runnable() {
                     @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        requestUninstall(pkgs);
+                    public void run() {
+                        int ok = 0;
+                        int fail = 0;
+                        for (final String pkg : pkgs) {
+                            if (pkg.equals(getPackageName())) {
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("• AppMan itself  (skipped)");
+                                    }
+                                });
+                                continue;
+                            }
+                            ui.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    op.log("• " + pkg);
+                                }
+                            });
+                            final ShizukuHelper.Result r = ShizukuHelper.uninstall(pkg);
+                            if (r.ok()) {
+                                ok++;
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("  ✔ uninstalled");
+                                    }
+                                });
+                            } else {
+                                fail++;
+                                final String msg = r.message();
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("  ✘ " + msg);
+                                    }
+                                });
+                            }
+                        }
+                        final int fOk = ok;
+                        final int fFail = fail;
+                        ui.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                setBusy(false, null);
+                                op.done(fFail == 0, fOk + " uninstalled"
+                                        + (fFail > 0 ? ", " + fFail + " failed" : ""));
+                                loadApps();
+                            }
+                        });
                     }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+                });
+            }
+        });
     }
 
     private void requestUninstall(List<String> pkgs) {
@@ -678,6 +806,7 @@ public class MainActivity extends Activity {
             loadApps();
             return;
         }
+        currentUninstallPkg = pkg;
         try {
             Intent i = new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + pkg));
             i.putExtra(Intent.EXTRA_RETURN_RESULT, true);
@@ -692,6 +821,13 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQ_UNINSTALL) {
+            if (currentUninstallPkg != null) {
+                final String pkg = currentUninstallPkg;
+                currentUninstallPkg = null;
+                Utils.toast(this, isPackageInstalled(pkg)
+                        ? "Not uninstalled: " + pkg
+                        : "Uninstalled " + pkg);
+            }
             if (uninstallQueue.isEmpty()) {
                 loadApps();
             } else {
@@ -703,6 +839,132 @@ public class MainActivity extends Activity {
                 }, 400);
             }
         }
+    }
+
+    private void showBatchPower(View anchor) {
+        final List<AppEntry> apps = selectedEntries();
+        if (apps.isEmpty()) return;
+        PopupMenu p = new PopupMenu(this, anchor);
+        p.getMenu().add(1, 1, 0, "Force stop selected (" + apps.size() + ")");
+        p.getMenu().add(1, 2, 1, "Clear cache selected (" + apps.size() + ")");
+        p.getMenu().add(1, 3, 2, "Clear data selected (" + apps.size() + ")");
+        p.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                int kind = item.getItemId() - 1;
+                if (kind == 2) {
+                    confirmBatchClearData(apps);
+                } else {
+                    runBatchPower(kind, apps);
+                }
+                return true;
+            }
+        });
+        p.show();
+    }
+
+    private void confirmBatchClearData(final List<AppEntry> apps) {
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < apps.size() && i < 5; i++) {
+            if (i > 0) names.append(", ");
+            names.append(apps.get(i).label);
+        }
+        if (apps.size() > 5) names.append(", …");
+        new AlertDialog.Builder(this)
+                .setTitle("Clear data of " + apps.size() + " apps?")
+                .setMessage("Erase ALL data of:\n\n" + names
+                        + "\n\nThis cannot be undone.")
+                .setPositiveButton("Clear data", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        runBatchPower(2, apps);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void runBatchPower(final int kind, final List<AppEntry> apps) {
+        if (apps.isEmpty()) return;
+        if (!ShizukuHelper.isReady()) {
+            showShizukuStatus();
+            return;
+        }
+        if (activeOperation != null && !activeOperation.finished()) {
+            Utils.toast(this, "Another operation is still running");
+            return;
+        }
+        final String title = (kind == 0 ? "Force stop" : kind == 1 ? "Clear cache" : "Clear data")
+                + " · " + apps.size() + " apps";
+        final Operation op = new Operation(title);
+        activeOperation = op;
+        withShizuku(op, new Runnable() {
+            @Override
+            public void run() {
+                if (selectionMode) exitSelection();
+                final String verb = kind == 0 ? "Force-stopping" : kind == 1 ? "Clearing cache of" : "Clearing data of";
+                setBusy(true, verb + " " + apps.size() + " apps");
+                op.log(verb + " " + apps.size() + " apps…");
+                io.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        int ok = 0;
+                        int fail = 0;
+                        for (final AppEntry e : apps) {
+                            if (e.pkg.equals(getPackageName())) {
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("• " + e.label + "  (skipped AppMan itself)");
+                                    }
+                                });
+                                continue;
+                            }
+                            ui.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    op.log("• " + e.label);
+                                }
+                            });
+                            final ShizukuHelper.Result r = kind == 0
+                                    ? ShizukuHelper.forceStop(e.pkg)
+                                    : kind == 1
+                                    ? ShizukuHelper.clearCache(e.pkg)
+                                    : ShizukuHelper.clearData(e.pkg);
+                            if (r.ok()) {
+                                ok++;
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("  ✔ done");
+                                    }
+                                });
+                            } else {
+                                fail++;
+                                final String msg = r.message();
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("  ✘ " + msg);
+                                    }
+                                });
+                            }
+                        }
+                        final int fOk = ok;
+                        final int fFail = fail;
+                        ui.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                setBusy(false, null);
+                                op.done(fFail == 0, fOk + " succeeded"
+                                        + (fFail > 0 ? ", " + fFail + " failed" : ""));
+                                loadApps();
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
 
     // ---------------------------------------------------------------- details
@@ -720,6 +982,7 @@ public class MainActivity extends Activity {
         Button clearCache = v.findViewById(R.id.d_clear_cache);
         Button clearData = v.findViewById(R.id.d_clear_data);
         Button libs = v.findViewById(R.id.d_libs);
+        Button export = v.findViewById(R.id.d_export);
 
         icon.setImageDrawable(e.icon != null ? e.icon
                 : getDrawable(android.R.drawable.sym_def_app_icon));
@@ -758,11 +1021,19 @@ public class MainActivity extends Activity {
         tip(usage, "Grant usage access to show storage and usage stats");
         tip(shizukuStatus, "Shizuku status and setup");
         tip(libs, "List native .so libraries inside this app's APK");
+        tip(export, "Export base + split APKs and all native libs as one zip");
         libs.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 dlg.dismiss();
                 openNativeLibs(e);
+            }
+        });
+        export.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dlg.dismiss();
+                exportPackage(e);
             }
         });
         final Button libsButton = libs;
@@ -996,6 +1267,47 @@ public class MainActivity extends Activity {
         });
 
         dlg.show();
+    }
+
+    private void exportPackage(final AppEntry e) {
+        if (activeOperation != null && !activeOperation.finished()) {
+            Utils.toast(this, "Another operation is still running");
+            return;
+        }
+        final Operation op = new Operation("Export package · " + e.label);
+        activeOperation = op;
+        op.log("Packing base APK, split APKs and native libs…");
+        setBusy(true, "Exporting " + e.label);
+        final Context appCtx = getApplicationContext();
+        io.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    final File zip = PackageExporter.build(appCtx, e);
+                    final long size = zip.length();
+                    final String name = zip.getName();
+                    StorageWriter.writeFile(appCtx, StorageWriter.ROOT + "/exports",
+                            name, "application/zip", zip);
+                    zip.delete();
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            setBusy(false, null);
+                            op.done(true, name + "  (" + Utils.humanSize(size) + ")\n"
+                                    + "Download/AppMan/exports/" + name);
+                        }
+                    });
+                } catch (final Exception ex) {
+                    ui.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            setBusy(false, null);
+                            op.done(false, ex.getClass().getSimpleName() + ": " + ex.getMessage());
+                        }
+                    });
+                }
+            }
+        });
     }
 
     private void openNativeLibs(final AppEntry e) {

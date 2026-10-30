@@ -13,6 +13,7 @@ public class AppEntry {
     public int minSdk;
     public int uid;
     public boolean system;
+    public boolean running;
     public String sourceDir;
     public String[] splitDirs;
     public String installer;

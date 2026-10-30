@@ -1,5 +1,6 @@
 package io.github.karvanidx.appman;
 
+import android.app.ActivityManager;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStats;
 import android.app.usage.UsageStatsManager;
@@ -9,8 +10,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** UsageStatsManager access (requires the PACKAGE_USAGE_STATS app-op, same as storage stats). */
 public final class UsageRepo {
@@ -27,6 +30,50 @@ public final class UsageRepo {
         } catch (Throwable t) {
             return Collections.emptyMap();
         }
+    }
+
+    /** Packages considered active: latest UsageEvent is foreground, plus running processes. */
+    public static Set<String> activePackages(Context ctx) {
+        Set<String> out = new HashSet<>();
+        if (!Utils.usageAccessGranted(ctx)) return out;
+        long now = System.currentTimeMillis();
+        Map<String, Integer> last = new HashMap<>();
+        try {
+            UsageStatsManager usm =
+                    (UsageStatsManager) ctx.getSystemService(Context.USAGE_STATS_SERVICE);
+            if (usm != null) {
+                UsageEvents events = usm.queryEvents(now - 24L * 60 * 60 * 1000, now);
+                if (events != null) {
+                    UsageEvents.Event ev = new UsageEvents.Event();
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(ev);
+                        String pkg = ev.getPackageName();
+                        if (pkg == null) continue;
+                        int type = ev.getEventType();
+                        if (type == UsageEvents.Event.MOVE_TO_FOREGROUND
+                                || type == UsageEvents.Event.MOVE_TO_BACKGROUND) {
+                            last.put(pkg, type);
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        for (Map.Entry<String, Integer> e : last.entrySet()) {
+            if (e.getValue() == UsageEvents.Event.MOVE_TO_FOREGROUND) out.add(e.getKey());
+        }
+        try {
+            ActivityManager am = (ActivityManager) ctx.getSystemService(Context.ACTIVITY_SERVICE);
+            List<ActivityManager.RunningAppProcessInfo> procs = am.getRunningAppProcesses();
+            if (procs != null) {
+                for (ActivityManager.RunningAppProcessInfo pi : procs) {
+                    if (pi.processName == null) continue;
+                    out.add(pi.processName.split(":")[0]);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return out;
     }
 
     public static final class Session {
