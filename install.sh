@@ -2,7 +2,7 @@
 # Copy the APK to shared Downloads and try to open the system installer.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-APK="${1:-$ROOT/dist/appman-1.6.apk}"
+APK="${1:-$ROOT/dist/appman-1.7.apk}"
 [ -f "$APK" ] || { echo "APK not found: $APK (run ./build.sh first)" >&2; exit 1; }
 
 DEST="/sdcard/Download/AppMan"

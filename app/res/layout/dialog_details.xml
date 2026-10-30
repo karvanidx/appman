@@ -63,6 +63,19 @@
             android:textSize="14sp" />
 
         <TextView
+            android:id="@+id/d_safety"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_badge_gray"
+            android:lineSpacingExtra="3dp"
+            android:padding="10dp"
+            android:text="Safety: not in AppMan's list"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/d_sizes"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

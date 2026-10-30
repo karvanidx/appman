@@ -2,6 +2,12 @@
 
 Short, focused review after v1.5. Format: observation → fix / recommendation.
 
+## Applied in 1.7
+- Adopted the redesign direction: status pill, rounded search, card rows, bottom nav
+- Hero analytics card + segmented range + card list
+- Tools bottom sheet, filter/sort chips, empty states
+- Safety card, debloat filter, critical guard, auto-backup before Shizuku uninstall
+
 ## Applied in 1.6
 
 | Area | Finding | Change |

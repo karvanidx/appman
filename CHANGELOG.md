@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7
+- Modern Material-inspired UI: status pill, rounded search, card rows, bottom navigation
+- Analytics hero card, segmented range, card list, blue/indigo bars
+- Tools bottom sheet; filter & sort chips
+- Own HyperOS safety list (75 entries, 34 protected) with Recommended/Advanced/Expert badges
+- Debloat filter, critical-package guard, safety detail card, Safety & privacy screen
+- Shizuku uninstall automatically backs up APKs first
+- No raw UAD/Canta data copied; UAD-ng linked for reference
+
 ## 1.6
 - About version is read from the package (no more hardcoded v1.4)
 - Export now asks for confirmation, then offers **Open Downloads** / **Share zip**

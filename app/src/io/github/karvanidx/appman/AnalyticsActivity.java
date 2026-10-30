@@ -3,8 +3,10 @@ package io.github.karvanidx.appman;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.usage.UsageStats;
+import android.content.Intent;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -101,19 +103,6 @@ public class AnalyticsActivity extends Activity {
             }
         });
 
-        ImageButton back = findViewById(R.id.an_back);
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
-        findViewById(R.id.an_refresh).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                load();
-            }
-        });
         grantButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -121,8 +110,6 @@ public class AnalyticsActivity extends Activity {
             }
         });
 
-        tip(back, "Back to AppMan");
-        tip(findViewById(R.id.an_refresh), "Refresh usage data");
         for (int i = 0; i < rangeButtons.length; i++) {
             final int r = i;
             rangeButtons[i].setOnClickListener(new View.OnClickListener() {
@@ -133,6 +120,60 @@ public class AnalyticsActivity extends Activity {
             });
         }
         applyRangeStyles();
+        setupBottomNav();
+    }
+
+    private void setupBottomNav() {
+        View apps = findViewById(R.id.nav_apps);
+        View analytics = findViewById(R.id.nav_analytics);
+        View tools = findViewById(R.id.nav_tools);
+        styleNavItem(findViewById(R.id.nav_apps_pill), (ImageView) findViewById(R.id.nav_apps_icon),
+                (TextView) findViewById(R.id.nav_apps_label), false);
+        styleNavItem(findViewById(R.id.nav_analytics_pill), (ImageView) findViewById(R.id.nav_analytics_icon),
+                (TextView) findViewById(R.id.nav_analytics_label), true);
+        styleNavItem(findViewById(R.id.nav_tools_pill), (ImageView) findViewById(R.id.nav_tools_icon),
+                (TextView) findViewById(R.id.nav_tools_label), false);
+        apps.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(AnalyticsActivity.this, MainActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                finish();
+            }
+        });
+        analytics.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // already here
+            }
+        });
+        tools.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(AnalyticsActivity.this, MainActivity.class)
+                        .putExtra("open_tools", true)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+                finish();
+            }
+        });
+        tip(apps, "Apps");
+        tip(analytics, "Usage analytics");
+        tip(tools, "Tools and settings");
+    }
+
+    private void styleNavItem(View pill, ImageView icon, TextView label, boolean active) {
+        if (pill == null) return;
+        if (active) {
+            pill.setBackgroundResource(R.drawable.bg_nav_active);
+            icon.setColorFilter(0xFF2563EB);
+            label.setTextColor(0xFF2563EB);
+            label.setTypeface(null, android.graphics.Typeface.BOLD);
+        } else {
+            pill.setBackgroundColor(0x00000000);
+            icon.setColorFilter(0xFF6B7280);
+            label.setTextColor(0xFF6B7280);
+            label.setTypeface(null, android.graphics.Typeface.NORMAL);
+        }
     }
 
     private void tip(View v, String text) {
@@ -150,10 +191,11 @@ public class AnalyticsActivity extends Activity {
         for (int i = 0; i < rangeButtons.length; i++) {
             boolean selected = i == range;
             rangeButtons[i].setBackgroundResource(selected
-                    ? R.drawable.bg_seg_selected : R.drawable.bg_seg_normal);
-            rangeButtons[i].setTextColor(selected ? 0xFFFFFFFF : 0xFF1565C0);
+                    ? R.drawable.bg_seg_selected_white : 0);
+            rangeButtons[i].setTextColor(selected ? 0xFF111827 : 0xFF6B7280);
             rangeButtons[i].setTypeface(null, selected
                     ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+            rangeButtons[i].setElevation(selected ? 1f : 0f);
         }
     }
 
@@ -169,8 +211,8 @@ public class AnalyticsActivity extends Activity {
             rows.clear();
             adapter.notifyDataSetChanged();
             tvTime.setText("—");
-            tvApps.setText("— apps used");
-            tvLaunches.setText("— launches");
+            tvApps.setText("— Apps");
+            tvLaunches.setText("— Launches");
             progressBar.setVisibility(View.GONE);
             emptyView.setVisibility(View.VISIBLE);
             emptyText.setText("Usage access is required to show screen time,\nlaunch counts and session history.");
@@ -255,8 +297,8 @@ public class AnalyticsActivity extends Activity {
                         adapter.setMax(max);
                         adapter.notifyDataSetChanged();
                         tvTime.setText(Utils.humanDuration(fTotalTime));
-                        tvApps.setText(fUsedApps + " apps used");
-                        tvLaunches.setText(fTotalLaunches + " launches");
+                        tvApps.setText(fUsedApps + " Apps");
+                        tvLaunches.setText(fTotalLaunches + " Launches");
                         if (rows.isEmpty()) {
                             emptyView.setVisibility(View.VISIBLE);
                             emptyText.setText("No usage recorded for this period.");
@@ -370,6 +412,8 @@ public class AnalyticsActivity extends Activity {
             if (r.lastUsed > 0) s.append("  •  ").append(Utils.ago(r.lastUsed));
             sub.setText(s);
             time.setText(Utils.humanDuration(r.foreground));
+            int[] colors = {0xFF2563EB, 0xFF4F46E5, 0xFF111827};
+            bar.setProgressTintList(ColorStateList.valueOf(colors[position % colors.length]));
             bar.setProgress(r.foreground <= 0 ? 0
                     : (int) Math.max(1, r.foreground * 1000 / Math.max(max, 1)));
             return convertView;

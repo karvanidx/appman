@@ -1,21 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#1565C0</color>
-    <color name="primary_dark">#0D47A1</color>
-    <color name="accent">#00897B</color>
-    <color name="bg">#F5F6F8</color>
-    <color name="row_selected">#E3F2FD</color>
-    <color name="text_primary">#1A1A1A</color>
+    <color name="primary">#2563EB</color>
+    <color name="primary_dark">#1D4ED8</color>
+    <color name="accent">#4F46E5</color>
+    <color name="bg">#F3F4F6</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="text_primary">#111827</color>
     <color name="text_secondary">#6B7280</color>
+    <color name="text_tertiary">#9CA3AF</color>
     <color name="divider">#E5E7EB</color>
+    <color name="blue_50">#EFF6FF</color>
+    <color name="blue_200">#BFDBFE</color>
+    <color name="green_50">#ECFDF5</color>
+    <color name="green_600">#059669</color>
+    <color name="green_700">#047857</color>
+    <color name="amber_50">#FFFBEB</color>
+    <color name="amber_700">#B45309</color>
+    <color name="red_50">#FEF2F2</color>
+    <color name="red_600">#DC2626</color>
+    <color name="row_selected">#EFF6FF</color>
 
     <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
         <item name="android:colorPrimary">@color/primary</item>
         <item name="android:colorPrimaryDark">@color/primary_dark</item>
         <item name="android:colorAccent">@color/primary</item>
         <item name="android:windowBackground">@color/bg</item>
-        <item name="android:statusBarColor">@color/primary_dark</item>
-        <item name="android:navigationBarColor">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/surface</item>
         <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+    <style name="TextTitle">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">26sp</item>
+        <item name="android:letterSpacing">-0.01</item>
+    </style>
+
+    <style name="TextSection">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="ChipText">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">40dp</item>
     </style>
 </resources>

@@ -2,6 +2,7 @@ package io.github.karvanidx.appman;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.Context;
@@ -9,6 +10,8 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
@@ -17,10 +20,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -29,7 +33,6 @@ import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.io.File;
@@ -69,19 +72,33 @@ public class MainActivity extends Activity {
     private boolean recentSortWarned = false;
 
     private EditText etSearch;
-    private Spinner spFilter;
-    private Spinner spSort;
+    private ImageButton btnFilter;
     private ListView listView;
     private View emptyView;
     private View bottomBar;
     private View statusBar;
+    private View bottomNav;
     private View dotShizuku;
-    private TextView tvSummary;
+    private TextView tvShowing;
+    private TextView tvTotal;
     private TextView tvStatus;
     private TextView tvSelected;
     private TextView tvShizukuChip;
     private Button btnShareSel;
     private ProgressBar progressBar;
+
+    private View navApps;
+    private View navAnalytics;
+    private View navTools;
+    private View navAppsPill;
+    private View navAnalyticsPill;
+    private View navToolsPill;
+    private ImageView navAppsIcon;
+    private ImageView navAnalyticsIcon;
+    private ImageView navToolsIcon;
+    private TextView navAppsLabel;
+    private TextView navAnalyticsLabel;
+    private TextView navToolsLabel;
 
     private AlertDialog progressDialog;
     private TextView pTitle;
@@ -126,14 +143,15 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         etSearch = findViewById(R.id.et_search);
-        spFilter = findViewById(R.id.sp_filter);
-        spSort = findViewById(R.id.sp_sort);
+        btnFilter = findViewById(R.id.btn_filter);
         listView = findViewById(R.id.list);
         emptyView = findViewById(R.id.empty);
         bottomBar = findViewById(R.id.bottom_bar);
         statusBar = findViewById(R.id.status_bar);
+        bottomNav = findViewById(R.id.bottom_nav);
         dotShizuku = findViewById(R.id.dot_shizuku);
-        tvSummary = findViewById(R.id.tv_summary);
+        tvShowing = findViewById(R.id.tv_showing);
+        tvTotal = findViewById(R.id.tv_total);
         tvStatus = findViewById(R.id.tv_status);
         tvSelected = findViewById(R.id.tv_selected);
         tvShizukuChip = findViewById(R.id.tv_shizuku_chip);
@@ -144,88 +162,40 @@ public class MainActivity extends Activity {
         listView.setAdapter(adapter);
         listView.setEmptyView(emptyView);
 
-        setupSpinners();
         setupListeners();
+        setupBottomNav(true);
         initShizuku();
         updateShizukuIndicator();
         loadApps();
-    }
-
-    private void setupSpinners() {
-        ArrayAdapter<String> fa = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item,
-                new String[]{"All apps", "User apps", "System apps", "Running now"});
-        fa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spFilter.setAdapter(fa);
-        spFilter.setSelection(filterMode);
-        spFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                filterMode = position;
-                if (filterMode == 3) {
-                    if (!Utils.usageAccessGranted(MainActivity.this)) {
-                        Utils.toast(MainActivity.this,
-                                "Running filter uses usage access (menu → Usage access settings)");
-                    } else if (!ShizukuHelper.isReady()) {
-                        Utils.toast(MainActivity.this,
-                                "Background apps need Shizuku; showing foreground apps only");
-                    }
+        if (getIntent() != null && getIntent().getBooleanExtra("open_tools", false)) {
+            getIntent().removeExtra("open_tools");
+            ui.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    showTools();
                 }
-                applyFilter();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
-
-        ArrayAdapter<String> sa = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item,
-                new String[]{"Sort: Name", "Sort: Size", "Sort: Updated", "Sort: Package", "Sort: Recent"});
-        sa.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spSort.setAdapter(sa);
-        spSort.setSelection(sortMode);
-        spSort.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                sortMode = position;
-                if (sortMode == 4 && !Utils.usageAccessGranted(MainActivity.this)
-                        && !recentSortWarned) {
-                    recentSortWarned = true;
-                    Utils.toast(MainActivity.this,
-                            "Recent sort needs usage access (menu → Usage access settings)");
-                }
-                applyFilter();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
+            }, 350);
+        }
     }
 
     private void setupListeners() {
-        findViewById(R.id.btn_refresh).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadApps();
-            }
-        });
-        findViewById(R.id.btn_menu).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showMenu(v);
-            }
-        });
         findViewById(R.id.btn_clear).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 etSearch.setText("");
             }
         });
-        tip(findViewById(R.id.btn_refresh), "Refresh the installed app list");
-        tip(findViewById(R.id.btn_menu), "More actions: analytics, backup, export");
         tip(findViewById(R.id.btn_clear), "Clear the search box");
+        tip(btnFilter, "Filter and sort apps");
+        btnFilter.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showFilterDialog();
+            }
+        });
+        tip(findViewById(R.id.nav_apps), "Apps");
+        tip(findViewById(R.id.nav_analytics), "Usage analytics");
+        tip(findViewById(R.id.nav_tools), "Tools and settings");
         tip(findViewById(R.id.shizuku_chip), "Shizuku status, permission and self-test");
         tip(findViewById(R.id.btn_backup_sel), "Back up selected APKs");
         tip(findViewById(R.id.btn_share_sel), "Share the selected APK");
@@ -314,7 +284,8 @@ public class MainActivity extends Activity {
     private void loadApps() {
         final int token = ++loadToken;
         setBusy(true, "Scanning installed apps…");
-        tvSummary.setText("Scanning…");
+        tvShowing.setText("Scanning…");
+        tvTotal.setText("");
         final Context appCtx = getApplicationContext();
         io.execute(new Runnable() {
             @Override
@@ -360,6 +331,7 @@ public class MainActivity extends Activity {
             if (filterMode == 1 && e.system) continue;
             if (filterMode == 2 && !e.system) continue;
             if (filterMode == 3 && !e.running) continue;
+            if (filterMode == 4 && !SafetyDb.isDebloatCandidate(this, e.pkg)) continue;
             if (!q.isEmpty() && !e.searchText.contains(q)) continue;
             shown.add(e);
             total += e.apkSize;
@@ -367,8 +339,17 @@ public class MainActivity extends Activity {
         Collections.sort(shown, comparator());
         adapter.setItems(shown);
         adapter.setSelectionState(selectionMode, selected);
-        tvSummary.setText(shown.size() + " of " + allApps.size() + " apps  •  "
-                + Utils.humanSize(total));
+        String label;
+        switch (filterMode) {
+            case 1: label = "Showing User Apps"; break;
+            case 2: label = "Showing System Apps"; break;
+            case 3: label = "Showing Running Apps"; break;
+            case 4: label = "Showing Debloat Candidates"; break;
+            default: label = "Showing All Apps"; break;
+        }
+        tvShowing.setText(label);
+        tvTotal.setText(Utils.humanSize(total) + "  •  " + shown.size() + " apps");
+        etSearch.setHint("Search " + allApps.size() + " apps…");
         if (selectionMode) updateSelectionUi();
     }
 
@@ -423,6 +404,7 @@ public class MainActivity extends Activity {
 
     private void updateSelectionUi() {
         bottomBar.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
+        if (bottomNav != null) bottomNav.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
         if (!selectionMode) {
             tvSelected.setText("");
             return;
@@ -448,47 +430,277 @@ public class MainActivity extends Activity {
         return out;
     }
 
-    // ------------------------------------------------------------------ menu
+    // ------------------------------------------------------------------ tools
 
-    private void showMenu(View anchor) {
-        PopupMenu p = new PopupMenu(this, anchor);
-        p.getMenu().add(0, 1, 0, "Refresh");
-        p.getMenu().add(0, 2, 1, "Backup all user apps");
-        p.getMenu().add(0, 3, 2, "Export app list (CSV)");
-        p.getMenu().add(0, 4, 3, "Usage analytics");
-        p.getMenu().add(0, 5, 4, "Usage access settings");
-        p.getMenu().add(0, 6, 5, "Shizuku status");
-        p.getMenu().add(0, 7, 6, "About AppMan");
-        p.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+    private void setupBottomNav(final boolean appsActive) {
+        navApps = findViewById(R.id.nav_apps);
+        navAnalytics = findViewById(R.id.nav_analytics);
+        navTools = findViewById(R.id.nav_tools);
+        navAppsPill = findViewById(R.id.nav_apps_pill);
+        navAnalyticsPill = findViewById(R.id.nav_analytics_pill);
+        navToolsPill = findViewById(R.id.nav_tools_pill);
+        navAppsIcon = findViewById(R.id.nav_apps_icon);
+        navAnalyticsIcon = findViewById(R.id.nav_analytics_icon);
+        navToolsIcon = findViewById(R.id.nav_tools_icon);
+        navAppsLabel = findViewById(R.id.nav_apps_label);
+        navAnalyticsLabel = findViewById(R.id.nav_analytics_label);
+        navToolsLabel = findViewById(R.id.nav_tools_label);
+
+        styleNavItem(navAppsPill, navAppsIcon, navAppsLabel, appsActive);
+        styleNavItem(navAnalyticsPill, navAnalyticsIcon, navAnalyticsLabel, !appsActive);
+        styleNavItem(navToolsPill, navToolsIcon, navToolsLabel, false);
+
+        navApps.setOnClickListener(new View.OnClickListener() {
             @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                switch (item.getItemId()) {
-                    case 1:
-                        loadApps();
-                        return true;
-                    case 2:
-                        backupAllUser();
-                        return true;
-                    case 3:
-                        exportCsv();
-                        return true;
-                    case 4:
-                        startActivity(new Intent(MainActivity.this, AnalyticsActivity.class));
-                        return true;
-                    case 5:
-                        Utils.openUsageAccessSettings(MainActivity.this);
-                        return true;
-                    case 6:
-                        showShizukuStatus();
-                        return true;
-                    case 7:
-                        showAbout();
-                        return true;
+            public void onClick(View v) {
+                if (appsActive) {
+                    listView.smoothScrollToPosition(0);
+                } else {
+                    startActivity(new Intent(MainActivity.this, MainActivity.class)
+                            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
                 }
-                return false;
             }
         });
-        p.show();
+        navAnalytics.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (appsActive) {
+                    startActivity(new Intent(MainActivity.this, AnalyticsActivity.class));
+                }
+            }
+        });
+        navTools.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showTools();
+            }
+        });
+    }
+
+    private void styleNavItem(View pill, ImageView icon, TextView label, boolean active) {
+        if (pill == null) return;
+        if (active) {
+            pill.setBackgroundResource(R.drawable.bg_nav_active);
+            icon.setColorFilter(0xFF2563EB);
+            label.setTextColor(0xFF2563EB);
+            label.setTypeface(null, android.graphics.Typeface.BOLD);
+        } else {
+            pill.setBackgroundColor(Color.TRANSPARENT);
+            icon.setColorFilter(0xFF6B7280);
+            label.setTextColor(0xFF6B7280);
+            label.setTypeface(null, android.graphics.Typeface.NORMAL);
+        }
+    }
+
+    private void showTools() {
+        final Dialog d = new Dialog(this);
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        d.setContentView(R.layout.dialog_tools);
+        Window w = d.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            w.setGravity(Gravity.BOTTOM);
+            w.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+        View.OnClickListener closeThen = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+            }
+        };
+        d.findViewById(R.id.tool_close).setOnClickListener(closeThen);
+        d.findViewById(R.id.tool_refresh).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                loadApps();
+            }
+        });
+        d.findViewById(R.id.tool_backup).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                backupAllUser();
+            }
+        });
+        d.findViewById(R.id.tool_export).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                exportCsv();
+            }
+        });
+        d.findViewById(R.id.tool_shizuku).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                showShizukuStatus();
+            }
+        });
+        d.findViewById(R.id.tool_usage).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                Utils.openUsageAccessSettings(MainActivity.this);
+            }
+        });
+        d.findViewById(R.id.tool_safety).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                showSafety();
+            }
+        });
+        d.findViewById(R.id.tool_about).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                d.dismiss();
+                showAbout();
+            }
+        });
+        d.show();
+        if (w != null) {
+            w.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    private void showSafety() {
+        int total = SafetyDb.count(this);
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+                .setTitle("Safety & debloat")
+                .setMessage("AppMan has no INTERNET permission and no ads or telemetry.\n\n"
+                        + "• " + total + " HyperOS packages in AppMan's own safety list\n"
+                        + "• Critical system packages are protected from uninstall\n"
+                        + "• Categories are advisory: Recommended / Advanced / Expert\n"
+                        + "• Force stop is temporary and does not delete data\n"
+                        + "• Backups stay local in Download/AppMan\n\n"
+                        + "Verify every package before removing it. Link to UAD-ng for extra context.")
+                .setPositiveButton("Show debloat apps", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        filterMode = 4;
+                        applyFilter();
+                    }
+                })
+                .setNeutralButton("UAD-ng", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(
+                                    "https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation")));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                })
+                .setNegativeButton("Close", null);
+        b.show();
+    }
+
+    private void showFilterDialog() {
+        View v = getLayoutInflater().inflate(R.layout.dialog_filter, null);
+        final TextView[] filterChips = {
+                v.findViewById(R.id.chip_all),
+                v.findViewById(R.id.chip_user),
+                v.findViewById(R.id.chip_system),
+                v.findViewById(R.id.chip_running),
+                v.findViewById(R.id.chip_debloat)
+        };
+        final TextView[] sortChips = {
+                v.findViewById(R.id.chip_name),
+                v.findViewById(R.id.chip_size),
+                v.findViewById(R.id.chip_updated),
+                v.findViewById(R.id.chip_package),
+                v.findViewById(R.id.chip_recent)
+        };
+        final int[] pickFilter = {filterMode};
+        final int[] pickSort = {sortMode};
+
+        final Runnable refresh = new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < filterChips.length; i++) {
+                    styleChip(filterChips[i], i == pickFilter[0]);
+                }
+                for (int i = 0; i < sortChips.length; i++) {
+                    styleChip(sortChips[i], i == pickSort[0]);
+                }
+            }
+        };
+        for (int i = 0; i < filterChips.length; i++) {
+            final int idx = i;
+            filterChips[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    pickFilter[0] = idx;
+                    refresh.run();
+                }
+            });
+        }
+        for (int i = 0; i < sortChips.length; i++) {
+            final int idx = i;
+            sortChips[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    pickSort[0] = idx;
+                    refresh.run();
+                }
+            });
+        }
+        refresh.run();
+
+        final AlertDialog dlg = new AlertDialog.Builder(this).setView(v).create();
+        v.findViewById(R.id.filter_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dlg.dismiss();
+            }
+        });
+        v.findViewById(R.id.filter_apply).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                filterMode = pickFilter[0];
+                sortMode = pickSort[0];
+                if (filterMode == 3 && !Utils.usageAccessGranted(MainActivity.this)) {
+                    Utils.toast(MainActivity.this,
+                            "Running filter uses usage access");
+                } else if (filterMode == 3 && !ShizukuHelper.isReady()) {
+                    Utils.toast(MainActivity.this,
+                            "Background apps need Shizuku; showing foreground apps only");
+                }
+                if (sortMode == 4 && !Utils.usageAccessGranted(MainActivity.this)
+                        && !recentSortWarned) {
+                    recentSortWarned = true;
+                    Utils.toast(MainActivity.this,
+                            "Recent sort needs usage access");
+                }
+                dlg.dismiss();
+                applyFilter();
+            }
+        });
+        dlg.show();
+    }
+
+    private void styleChip(TextView chip, boolean selected) {
+        if (chip == null) return;
+        chip.setBackgroundResource(selected ? R.drawable.bg_chip_selected : R.drawable.bg_chip);
+        chip.setTextColor(selected ? 0xFFFFFFFF : 0xFF374151);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent != null && intent.getBooleanExtra("open_tools", false)) {
+            intent.removeExtra("open_tools");
+            ui.post(new Runnable() {
+                @Override
+                public void run() {
+                    showTools();
+                }
+            });
+        }
     }
 
     private void backupAllUser() {
@@ -684,8 +896,26 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void showBlocked(String pkg) {
+        SafetyDb.Entry se = SafetyDb.get(this, pkg);
+        String label = se != null ? se.title : pkg;
+        new AlertDialog.Builder(this)
+                .setTitle("Safety guard")
+                .setMessage("AppMan protects critical system packages.\n\n" + label
+                        + " is on the protected list, so uninstall and clear data are blocked.\n\n"
+                        + "Force stop is still allowed.")
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
     private void confirmUninstall(List<String> pkgs) {
         if (pkgs.isEmpty()) return;
+        for (String p : pkgs) {
+            if (SafetyDb.isBlocked(this, p)) {
+                showBlocked(p);
+                return;
+            }
+        }
         if (activeOperation != null && !activeOperation.finished()) {
             Utils.toast(this, "Another operation is still running");
             return;
@@ -700,9 +930,16 @@ public class MainActivity extends Activity {
             title = "Uninstall " + pkgs.size() + " apps";
             message = "Uninstall these " + pkgs.size() + " apps?";
         }
+        SafetyDb.Entry se = pkgs.size() == 1 ? SafetyDb.get(this, pkgs.get(0)) : null;
+        if (se != null) {
+            message += "\n\nSafety: " + SafetyDb.label(se.category) + " — " + se.note;
+        } else if (pkgs.size() > 1) {
+            message += "\n\nSafety: mixed/unknown apps. Back up before removing.";
+        }
         boolean ready = ShizukuHelper.isReady();
         message += ready
-                ? "\n\nVia Shizuku: silent, no system popup, live log (system apps may fail)."
+                ? "\n\nVia Shizuku: backs up the APK first, then uninstalls silently "
+                + "(no system popup, live log). System apps may fail."
                 + "\nAndroid dialog: the normal system confirmation."
                 : "\n\nShizuku is not ready, so only the Android confirmation dialog is available.";
         AlertDialog.Builder b = new AlertDialog.Builder(this)
@@ -749,11 +986,50 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 if (selectionMode) exitSelection();
-                setBusy(true, "Uninstalling " + pkgs.size() + " app(s)");
-                op.log("Uninstalling " + pkgs.size() + " package(s)…");
+                setBusy(true, "Backing up before uninstall…");
+                op.log("Backing up APKs before uninstall…");
+                final Context appCtx = getApplicationContext();
                 io.execute(new Runnable() {
                     @Override
                     public void run() {
+                        java.util.List<AppEntry> backups = new ArrayList<>();
+                        for (String p : pkgs) {
+                            AppEntry entry = byPkg.get(p);
+                            if (entry != null) backups.add(entry);
+                        }
+                        if (!backups.isEmpty()) {
+                            final String[] loc = {""};
+                            BackupManager.backup(appCtx, backups, new BackupManager.Listener() {
+                                @Override
+                                public boolean isCancelled() {
+                                    return false;
+                                }
+
+                                @Override
+                                public void onProgress(int done, int total, String label) {
+                                }
+
+                                @Override
+                                public void onDone(final int ok, final int failed, final String location) {
+                                    loc[0] = location;
+                                    ui.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            op.log("Backup: " + ok + " ok"
+                                                    + (failed > 0 ? ", " + failed + " failed" : "")
+                                                    + "  →  " + location);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        ui.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                setBusy(true, "Uninstalling " + pkgs.size() + " app(s)");
+                                op.log("Uninstalling " + pkgs.size() + " package(s)…");
+                            }
+                        });
                         int ok = 0;
                         int fail = 0;
                         for (final String pkg : pkgs) {
@@ -927,6 +1203,15 @@ public class MainActivity extends Activity {
                         int ok = 0;
                         int fail = 0;
                         for (final AppEntry e : apps) {
+                            if (kind == 2 && SafetyDb.isBlocked(MainActivity.this, e.pkg)) {
+                                ui.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        op.log("• " + e.label + "  (protected, skipped)");
+                                    }
+                                });
+                                continue;
+                            }
                             if (e.pkg.equals(getPackageName())) {
                                 ui.post(new Runnable() {
                                     @Override
@@ -1247,6 +1532,10 @@ public class MainActivity extends Activity {
         clearData.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (SafetyDb.isBlocked(MainActivity.this, e.pkg)) {
+                    showBlocked(e.pkg);
+                    return;
+                }
                 new AlertDialog.Builder(MainActivity.this)
                         .setTitle("Clear data?")
                         .setMessage("Erase ALL data of \"" + e.label + "\"?\n\n"
@@ -1528,22 +1817,32 @@ public class MainActivity extends Activity {
 
     private void updateShizukuIndicator() {
         if (dotShizuku == null || tvShizukuChip == null) return;
-        int color;
+        int dotColor;
         String text;
+        int pill;
+        int textColor;
         if (!ShizukuHelper.isRunning()) {
-            color = 0xFF9E9E9E;
-            text = "Shizuku off";
+            dotColor = 0xFF9CA3AF;
+            text = "SHIZUKU OFF";
+            pill = R.drawable.bg_pill_gray;
+            textColor = 0xFF6B7280;
         } else if (!ShizukuHelper.hasPermission()) {
-            color = 0xFFF9A825;
-            text = "Shizuku";
+            dotColor = 0xFFF59E0B;
+            text = "SHIZUKU PERMISSION";
+            pill = R.drawable.bg_pill_amber;
+            textColor = 0xFFB45309;
         } else {
-            color = 0xFF2E7D32;
-            text = "Shizuku on";
+            dotColor = 0xFF10B981;
+            text = "SHIZUKU ON";
+            pill = R.drawable.bg_pill_green;
+            textColor = 0xFF047857;
         }
         Drawable bg = dotShizuku.getBackground();
-        if (bg != null) bg.setTint(color);
+        if (bg != null) bg.setTint(dotColor);
+        View chip = findViewById(R.id.shizuku_chip);
+        if (chip != null) chip.setBackgroundResource(pill);
         tvShizukuChip.setText(text);
-        tvShizukuChip.setTextColor(color == 0xFF2E7D32 ? 0xFF2E7D32 : 0xFF6B7280);
+        tvShizukuChip.setTextColor(textColor);
     }
 
     private void withShizuku(final Operation op, final Runnable action) {

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AppMan - Redesign Concept</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { primary: '#2563eb' }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for web preview to look native */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; flex-direction: column; }
+    </style>
+</head>
+<body class="bg-gray-200 min-h-screen flex items-center justify-center p-4">
+
+    <!-- Mobile Device Mockup Container -->
+    <div class="w-[390px] h-[844px] bg-gray-50 rounded-[40px] shadow-2xl relative overflow-hidden border-[8px] border-gray-900 flex flex-col">
+        
+        <!-- Mock Status Bar -->
+        <div class="w-full h-12 flex justify-between items-center px-6 pt-2 bg-gray-50 z-20">
+            <span class="text-sm font-semibold text-gray-900">21:26</span>
+            <!-- Dynamic Island / Camera Notch simulation -->
+            <div class="w-24 h-6 bg-black rounded-full absolute left-1/2 -translate-x-1/2 top-2"></div>
+            <div class="flex items-center gap-1.5 text-gray-900">
+                <i data-lucide="signal" class="w-4 h-4"></i>
+                <i data-lucide="wifi" class="w-4 h-4"></i>
+                <i data-lucide="battery-medium" class="w-5 h-5"></i>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- TAB 1: APPS LIST (Main Screen)                 -->
+        <!-- ============================================== -->
+        <div id="tab-apps" class="tab-content active flex-1 overflow-hidden">
+            <!-- Header -->
+            <div class="px-6 pt-2 pb-4 bg-gray-50 z-10 relative">
+                <div class="flex items-center justify-between mb-5">
+                    <h1 class="text-2xl font-bold text-gray-900">AppMan</h1>
+                    <!-- Shizuku Status Badge -->
+                    <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-100 text-emerald-700 rounded-full border border-emerald-200 shadow-sm cursor-pointer hover:bg-emerald-200 transition">
+                        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider">Shizuku On</span>
+                    </div>
+                </div>
+
+                <!-- Search and Actions -->
+                <div class="flex gap-3 items-center">
+                    <div class="flex-1 bg-white border border-gray-200 rounded-2xl flex items-center px-4 py-3 shadow-sm focus-within:ring-2 focus-within:ring-primary focus-within:border-primary transition">
+                        <i data-lucide="search" class="text-gray-400 w-5 h-5 mr-3"></i>
+                        <input type="text" placeholder="Search 449 apps..." class="bg-transparent outline-none text-[15px] w-full text-gray-800 placeholder-gray-400">
+                    </div>
+                    <button class="bg-white border border-gray-200 p-3 rounded-2xl shadow-sm text-gray-700 hover:bg-gray-50 active:scale-95 transition">
+                        <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                
+                <!-- Info Row -->
+                <div class="flex justify-between items-center mt-4 text-xs font-medium text-gray-500 px-1">
+                    <span>Showing All Apps</span>
+                    <span>17.6 GB Total</span>
+                </div>
+            </div>
+
+            <!-- App List Scrollable Area -->
+            <div class="flex-1 overflow-y-auto px-4 pb-20">
+                <div class="bg-white rounded-3xl p-2 shadow-sm border border-gray-100">
+                    
+                    <!-- App Item 1 -->
+                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition">
+                        <div class="w-12 h-12 rounded-[14px] bg-gradient-to-tr from-orange-400 to-red-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">1⁴</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-[15px] font-semibold text-gray-900 truncate leading-tight">1.1.1.1</h4>
+                            <p class="text-[12px] text-gray-500 truncate mt-0.5">com.cloudflare.onedot...</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-[13px] font-semibold text-gray-700">51.7 MB</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">User</span>
+                        </div>
+                    </div>
+
+                    <!-- App Item 2 -->
+                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition">
+                        <div class="w-12 h-12 rounded-[14px] bg-gray-800 flex items-center justify-center text-white shadow-sm">
+                            <i data-lucide="terminal" class="w-6 h-6"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-[15px] font-semibold text-gray-900 truncate leading-tight">Termux</h4>
+                            <p class="text-[12px] text-gray-500 truncate mt-0.5">com.termux</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-[13px] font-semibold text-gray-700">114 MB</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">User</span>
+                        </div>
+                    </div>
+
+                    <!-- App Item 3 (System) -->
+                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition">
+                        <div class="w-12 h-12 rounded-[14px] bg-gray-100 flex items-center justify-center text-gray-400 shadow-sm border border-gray-200">
+                            <i data-lucide="shield-check" class="w-6 h-6 text-gray-500"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-[15px] font-semibold text-gray-900 truncate leading-tight">Ad privacy</h4>
+                            <p class="text-[12px] text-gray-500 truncate mt-0.5">com.google.android.ads...</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-[13px] font-semibold text-gray-700">16.9 MB</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md border border-gray-200">System</span>
+                        </div>
+                    </div>
+
+                    <!-- App Item 4 -->
+                    <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition">
+                        <div class="w-12 h-12 rounded-[14px] bg-green-500 flex items-center justify-center text-white shadow-sm">
+                            <i data-lucide="code" class="w-6 h-6"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-[15px] font-semibold text-gray-900 truncate leading-tight">AIDE Pro</h4>
+                            <p class="text-[12px] text-gray-500 truncate mt-0.5">aidepro.top</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-[13px] font-semibold text-gray-700">47.8 MB</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">User</span>
+                        </div>
+                    </div>
+                     <!-- App Item 5 -->
+                     <div class="flex items-center gap-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition">
+                        <div class="w-12 h-12 rounded-[14px] bg-red-600 flex items-center justify-center text-white shadow-sm">
+                            <i data-lucide="gift" class="w-6 h-6"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-[15px] font-semibold text-gray-900 truncate leading-tight">Alfagift</h4>
+                            <p class="text-[12px] text-gray-500 truncate mt-0.5">com.alfamart.alfagift</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="text-[13px] font-semibold text-gray-700">131 MB</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">User</span>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="h-6"></div> <!-- Bottom spacing -->
+            </div>
+        </div>
+
+
+        <!-- ============================================== -->
+        <!-- TAB 2: USAGE ANALYTICS                         -->
+        <!-- ============================================== -->
+        <div id="tab-analytics" class="tab-content flex-1 overflow-hidden bg-gray-50">
+            <!-- Header -->
+            <div class="px-6 pt-2 pb-4 z-10 relative">
+                <h1 class="text-2xl font-bold text-gray-900 mb-6">Usage Analytics</h1>
+                
+                <!-- Time Segmented Control -->
+                <div class="flex p-1 bg-gray-200/80 rounded-xl mb-6">
+                    <button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg text-gray-600 transition hover:bg-gray-300">Today</button>
+                    <button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg bg-white shadow-sm text-gray-900 transition">7 Days</button>
+                    <button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg text-gray-600 transition hover:bg-gray-300">30 Days</button>
+                </div>
+
+                <!-- Hero Card -->
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-3xl p-6 text-white shadow-lg shadow-blue-900/20 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="activity" class="w-24 h-24"></i></div>
+                    <p class="text-blue-100 text-sm font-medium mb-1">Total Screen Time</p>
+                    <h2 class="text-4xl font-bold mb-4 tracking-tight">2d 1h</h2>
+                    <div class="flex gap-4 text-sm font-medium text-blue-50">
+                        <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-md">
+                            <i data-lucide="smartphone" class="w-4 h-4"></i> 57 Apps
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-md">
+                            <i data-lucide="rocket" class="w-4 h-4"></i> 2,715 Launches
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics List -->
+            <div class="flex-1 overflow-y-auto px-4 pb-24">
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 flex flex-col gap-5">
+                    
+                    <!-- Item 1 -->
+                    <div>
+                        <div class="flex items-center gap-3 mb-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center text-white"><i data-lucide="gamepad-2" class="w-5 h-5"></i></div>
+                            <div class="flex-1">
+                                <h4 class="text-[14px] font-bold text-gray-900">Mobile Legends</h4>
+                                <p class="text-[11px] font-medium text-gray-500">32 launches • 1h ago</p>
+                            </div>
+                            <span class="text-[14px] font-bold text-gray-800">9h 21m</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-1.5">
+                            <div class="bg-blue-600 h-1.5 rounded-full" style="width: 85%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Item 2 -->
+                    <div>
+                        <div class="flex items-center gap-3 mb-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-white"><i data-lucide="terminal" class="w-5 h-5"></i></div>
+                            <div class="flex-1">
+                                <h4 class="text-[14px] font-bold text-gray-900">Termux</h4>
+                                <p class="text-[11px] font-medium text-gray-500">175 launches • Just now</p>
+                            </div>
+                            <span class="text-[14px] font-bold text-gray-800">6h 54m</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-1.5">
+                            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: 60%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Item 3 -->
+                    <div>
+                        <div class="flex items-center gap-3 mb-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white"><i data-lucide="x" class="w-5 h-5"></i></div>
+                            <div class="flex-1">
+                                <h4 class="text-[14px] font-bold text-gray-900">X (Twitter)</h4>
+                                <p class="text-[11px] font-medium text-gray-500">74 launches • 1h ago</p>
+                            </div>
+                            <span class="text-[14px] font-bold text-gray-800">4h 41m</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-1.5">
+                            <div class="bg-gray-800 h-1.5 rounded-full" style="width: 45%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- BOTTOM NAVIGATION BAR (New Feature)            -->
+        <!-- ============================================== -->
+        <div class="absolute bottom-0 w-full bg-white/80 backdrop-blur-xl border-t border-gray-100 px-6 pb-8 pt-3 z-30">
+            <div class="flex justify-between items-center">
+                <!-- Nav Item: Apps -->
+                <button onclick="switchTab('apps')" id="nav-apps" class="flex flex-col items-center gap-1 text-primary">
+                    <div class="px-4 py-1 bg-blue-50 rounded-full transition-all duration-300 nav-indicator">
+                        <i data-lucide="layers" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-bold">Apps</span>
+                </button>
+                
+                <!-- Nav Item: Analytics -->
+                <button onclick="switchTab('analytics')" id="nav-analytics" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-900 transition-colors">
+                    <div class="px-4 py-1 rounded-full transition-all duration-300 nav-indicator">
+                        <i data-lucide="pie-chart" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-semibold">Analytics</span>
+                </button>
+
+                <!-- Nav Item: Tools/Settings -->
+                <button class="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-900 transition-colors" onclick="alert('Menu items like Backup, Export, and Settings go here!')">
+                    <div class="px-4 py-1 rounded-full transition-all duration-300 nav-indicator">
+                        <i data-lucide="wrench" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-semibold">Tools</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript to handle interactivity -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Simple Tab Switching Logic
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Show targeted tab
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Reset Nav styling
+            const navApps = document.getElementById('nav-apps');
+            const navAnalytics = document.getElementById('nav-analytics');
+            
+            navApps.className = "flex flex-col items-center gap-1 text-gray-400 hover:text-gray-900 transition-colors";
+            navApps.querySelector('.nav-indicator').className = "px-4 py-1 rounded-full transition-all duration-300 nav-indicator";
+            navApps.querySelector('span').className = "text-[10px] font-semibold";
+
+            navAnalytics.className = "flex flex-col items-center gap-1 text-gray-400 hover:text-gray-900 transition-colors";
+            navAnalytics.querySelector('.nav-indicator').className = "px-4 py-1 rounded-full transition-all duration-300 nav-indicator";
+            navAnalytics.querySelector('span').className = "text-[10px] font-semibold";
+
+            // Set Active Nav styling
+            const activeNav = document.getElementById(`nav-${tabName}`);
+            activeNav.className = "flex flex-col items-center gap-1 text-primary";
+            activeNav.querySelector('.nav-indicator').className = "px-4 py-1 bg-blue-50 rounded-full transition-all duration-300 nav-indicator";
+            activeNav.querySelector('span').className = "text-[10px] font-bold";
+        }
+    </script>
+</body>
+</html>

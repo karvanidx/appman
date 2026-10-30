@@ -2,160 +2,161 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="@color/bg"
+    android:orientation="vertical">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#FFFFFF"
-        android:elevation="2dp"
-        android:paddingStart="14dp"
-        android:paddingEnd="6dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="8dp">
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="6dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="-0.01"
                 android:text="AppMan"
-                android:textColor="@color/primary"
-                android:textSize="26sp"
-                android:textStyle="bold" />
+                android:textColor="@color/text_primary"
+                android:textSize="26sp" />
 
             <LinearLayout
                 android:id="@+id/shizuku_chip"
                 android:layout_width="wrap_content"
-                android:layout_height="46dp"
-                android:layout_marginStart="8dp"
-                android:background="?android:attr/selectableItemBackground"
+                android:layout_height="34dp"
+                android:background="@drawable/bg_pill_gray"
                 android:clickable="true"
                 android:focusable="true"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp">
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp">
 
                 <View
                     android:id="@+id/dot_shizuku"
-                    android:layout_width="10dp"
-                    android:layout_height="10dp"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
                     android:background="@drawable/bg_dot" />
 
                 <TextView
                     android:id="@+id/tv_shizuku_chip"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
-                    android:text="Shizuku"
+                    android:layout_marginStart="6dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.04"
+                    android:text="SHIZUKU OFF"
+                    android:textAllCaps="true"
                     android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:textSize="10sp" />
             </LinearLayout>
-
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <ImageButton
-                android:id="@+id/btn_refresh"
-                android:layout_width="44dp"
-                android:layout_height="46dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Refresh"
-                android:src="@drawable/ic_refresh" />
-
-            <ImageButton
-                android:id="@+id/btn_menu"
-                android:layout_width="44dp"
-                android:layout_height="46dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Menu"
-                android:src="@drawable/ic_more" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tv_summary"
+        <!-- Search -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:paddingStart="1dp"
-            android:text="Loading…"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:layout_marginTop="15dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_search"
+                android:elevation="1dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="14dp"
+                android:paddingEnd="6dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="Search"
+                    android:src="@drawable/ic_search" />
+
+                <EditText
+                    android:id="@+id/et_search"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:hint="Search apps…"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:padding="0dp"
+                    android:textColor="@color/text_primary"
+                    android:textColorHint="@color/text_tertiary"
+                    android:textSize="15sp" />
+
+                <ImageButton
+                    android:id="@+id/btn_clear"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Clear search"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_close"
+                    android:tint="@color/text_tertiary" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btn_filter"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/bg_filter_button"
+                android:contentDescription="Filter and sort"
+                android:elevation="1dp"
+                android:padding="14dp"
+                android:src="@drawable/ic_tune" />
+        </LinearLayout>
+
+        <!-- Info row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp">
+
+            <TextView
+                android:id="@+id/tv_showing"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:text="Showing All Apps"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tv_total"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text=""
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
-
-    <!-- Search -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="4dp">
-
-        <EditText
-            android:id="@+id/et_search"
-            android:layout_width="0dp"
-            android:layout_height="46dp"
-            android:layout_weight="1"
-            android:background="@drawable/bg_input"
-            android:hint="Search apps or package name"
-            android:imeOptions="actionSearch"
-            android:inputType="text"
-            android:maxLines="1"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:textColor="@color/text_primary"
-            android:textColorHint="#9CA3AF"
-            android:textSize="16sp" />
-
-        <ImageButton
-            android:id="@+id/btn_clear"
-            android:layout_width="40dp"
-            android:layout_height="46dp"
-            android:layout_marginStart="4dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Clear search"
-            android:src="@drawable/ic_close" />
-    </LinearLayout>
-
-    <!-- Filters -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingBottom="4dp">
-
-        <Spinner
-            android:id="@+id/sp_filter"
-            android:layout_width="0dp"
-            android:layout_height="46dp"
-            android:layout_weight="1" />
-
-        <Spinner
-            android:id="@+id/sp_sort"
-            android:layout_width="0dp"
-            android:layout_height="46dp"
-            android:layout_weight="1" />
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/divider" />
 
     <!-- List -->
     <FrameLayout
@@ -167,33 +168,40 @@
             android:id="@+id/list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:divider="@color/divider"
-            android:dividerHeight="1dp"
-            android:scrollbarStyle="outsideOverlay" />
+            android:clipToPadding="false"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="8dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:scrollbars="none" />
 
         <LinearLayout
             android:id="@+id/empty"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
             android:gravity="center"
-            android:visibility="gone"
-            android:padding="32dp">
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:visibility="gone">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
                 android:text="No apps found"
                 android:textColor="@color/text_secondary"
-                android:textSize="18sp" />
+                android:textSize="17sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
+                android:gravity="center"
                 android:text="Try a different search or filter"
-                android:textColor="#9CA3AF"
-                android:textSize="14sp" />
+                android:textColor="@color/text_tertiary"
+                android:textSize="13sp" />
         </LinearLayout>
     </FrameLayout>
 
@@ -202,10 +210,10 @@
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:background="@drawable/bg_selection_bar"
+        android:elevation="12dp"
         android:gravity="center_vertical"
-        android:background="@drawable/bg_bottom"
-        android:elevation="8dp"
+        android:orientation="horizontal"
         android:paddingStart="12dp"
         android:paddingEnd="6dp"
         android:paddingTop="4dp"
@@ -217,77 +225,79 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
             android:text="0 selected"
             android:textColor="@color/text_primary"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/btn_backup_sel"
             android:layout_width="wrap_content"
-            android:layout_height="46dp"
-            android:background="?android:attr/selectableItemBackground"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:text="Backup"
-            android:textAllCaps="false"
-            android:textColor="@color/primary"
-            android:textSize="15sp" />
-
-        <Button
-            android:id="@+id/btn_share_sel"
-            android:layout_width="wrap_content"
-            android:layout_height="46dp"
+            android:layout_height="44dp"
             android:background="?android:attr/selectableItemBackground"
             android:minWidth="0dp"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
+            android:text="Backup"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/btn_share_sel"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:minWidth="0dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="Share"
             android:textAllCaps="false"
             android:textColor="@color/primary"
-            android:textSize="15sp" />
+            android:textSize="13sp" />
 
         <ImageButton
             android:id="@+id/btn_power_sel"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Shizuku actions"
+            android:padding="9dp"
             android:src="@drawable/ic_power" />
 
         <Button
             android:id="@+id/btn_uninstall_sel"
             android:layout_width="wrap_content"
-            android:layout_height="46dp"
+            android:layout_height="44dp"
             android:background="?android:attr/selectableItemBackground"
             android:minWidth="0dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
             android:text="Uninstall"
             android:textAllCaps="false"
-            android:textColor="#C62828"
-            android:textSize="15sp" />
+            android:textColor="@color/red_600"
+            android:textSize="13sp" />
 
         <ImageButton
             android:id="@+id/btn_cancel_sel"
             android:layout_width="40dp"
-            android:layout_height="46dp"
+            android:layout_height="40dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Cancel selection"
+            android:padding="8dp"
             android:src="@drawable/ic_close" />
     </LinearLayout>
 
-    <!-- Status / progress -->
+    <!-- Status -->
     <LinearLayout
         android:id="@+id/status_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:background="@color/surface"
         android:gravity="center_vertical"
-        android:background="#FFFFFF"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:paddingTop="6dp"
         android:paddingBottom="6dp"
         android:visibility="gone">
@@ -295,8 +305,8 @@
         <ProgressBar
             android:id="@+id/progress"
             style="?android:attr/progressBarStyleSmall"
-            android:layout_width="20dp"
-            android:layout_height="20dp" />
+            android:layout_width="18dp"
+            android:layout_height="18dp" />
 
         <TextView
             android:id="@+id/tv_status"
@@ -308,6 +318,8 @@
             android:maxLines="1"
             android:text="Working…"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
     </LinearLayout>
+
+    <include layout="@layout/bottom_nav" />
 </LinearLayout>

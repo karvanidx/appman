@@ -21,7 +21,6 @@ public class AppAdapter extends BaseAdapter {
     private List<AppEntry> items = new ArrayList<>();
     private boolean selectionMode = false;
     private Set<String> selected = new HashSet<>();
-    private final int selectedColor = Color.rgb(227, 242, 253);
 
     public AppAdapter(Context ctx) {
         inflater = LayoutInflater.from(ctx);
@@ -85,10 +84,16 @@ public class AppAdapter extends BaseAdapter {
         h.size.setText(Utils.humanSize(e.apkSize));
         if (e.running) {
             h.type.setText("Running");
-            h.type.setTextColor(0xFF2E7D32);
+            h.type.setTextColor(0xFF047857);
+            h.type.setBackgroundResource(R.drawable.bg_badge_green);
+        } else if (e.system) {
+            h.type.setText("System");
+            h.type.setTextColor(0xFF4B5563);
+            h.type.setBackgroundResource(R.drawable.bg_badge_gray);
         } else {
-            h.type.setText(e.system ? "System" : "User");
-            h.type.setTextColor(0xFF6B7280);
+            h.type.setText("User");
+            h.type.setTextColor(0xFF2563EB);
+            h.type.setBackgroundResource(R.drawable.bg_badge_blue);
         }
 
         if (e.icon != null) h.icon.setImageDrawable(e.icon);
@@ -97,11 +102,8 @@ public class AppAdapter extends BaseAdapter {
         h.check.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
         h.check.setChecked(isSelected);
 
-        if (selectionMode && isSelected) {
-            h.root.setBackgroundColor(selectedColor);
-        } else {
-            h.root.setBackgroundColor(Color.WHITE);
-        }
+        h.root.setBackgroundResource(isSelected && selectionMode
+                ? R.drawable.bg_row_selected : R.drawable.bg_row);
         return convertView;
     }
 }

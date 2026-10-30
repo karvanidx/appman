@@ -6,8 +6,8 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 AJ="${ANDROID_JAR:-$HOME/android/sdk/platforms/android-36/android.jar}"
 MIN_SDK=24
 TARGET_SDK=34
-VERSION_CODE=8
-VERSION_NAME="1.6"
+VERSION_CODE=9
+VERSION_NAME="1.7"
 
 if [ ! -f "$AJ" ]; then
   echo "ERROR: android.jar not found at $AJ" >&2
@@ -34,6 +34,7 @@ aapt2 link -o "$BUILD/base.apk" \
   --target-sdk-version "$TARGET_SDK" \
   --version-code "$VERSION_CODE" \
   --version-name "$VERSION_NAME" \
+  -A "$ROOT/app/assets" \
   "$BUILD/res.zip"
 
 echo "[3/6] javac"
