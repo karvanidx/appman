@@ -74,6 +74,10 @@ build.sh / sdk-setup.sh / install.sh  build and install helpers
 .github/workflows/build.yml           CI
 ```
 
+## Docs
+- [UI/UX audit](docs/UI_UX_AUDIT.md)
+- [Changelog](CHANGELOG.md)
+
 ## Credits
 
 Built by [karvanidx](https://github.com/karvanidx) with
