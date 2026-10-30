@@ -162,9 +162,14 @@ public class MainActivity extends Activity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 filterMode = position;
-                if (filterMode == 3 && !Utils.usageAccessGranted(MainActivity.this)) {
-                    Utils.toast(MainActivity.this,
-                            "Running filter uses usage access (menu → Usage access settings)");
+                if (filterMode == 3) {
+                    if (!Utils.usageAccessGranted(MainActivity.this)) {
+                        Utils.toast(MainActivity.this,
+                                "Running filter uses usage access (menu → Usage access settings)");
+                    } else if (!ShizukuHelper.isReady()) {
+                        Utils.toast(MainActivity.this,
+                                "Background apps need Shizuku; showing foreground apps only");
+                    }
                 }
                 applyFilter();
             }
@@ -497,7 +502,12 @@ public class MainActivity extends Activity {
     }
 
     private void showAbout() {
-        String html = "<b>AppMan 1.4</b><br><br>"
+        String version = "";
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {
+        }
+        String html = "<b>AppMan " + version + "</b><br><br>"
                 + "A lightweight no-root app manager and usage tracker, built in Termux.<br><br>"
                 + "• Lists all installed apps (user + system)<br>"
                 + "• Backup APKs (including split APKs)<br>"
@@ -593,7 +603,13 @@ public class MainActivity extends Activity {
                                 new AlertDialog.Builder(MainActivity.this)
                                         .setTitle("Backup finished")
                                         .setMessage(msg)
-                                        .setPositiveButton("OK", null)
+                                        .setPositiveButton("Open Downloads", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                openDownloads();
+                                            }
+                                        })
+                                        .setNegativeButton("Close", null)
                                         .show();
                             }
                         });
@@ -1274,6 +1290,21 @@ public class MainActivity extends Activity {
             Utils.toast(this, "Another operation is still running");
             return;
         }
+        new AlertDialog.Builder(this)
+                .setTitle("Export package?")
+                .setMessage("Create a zip with the base APK, split APKs and all native libs for \""
+                        + e.label + "\"?\n\nSaved to Download/AppMan/exports/")
+                .setPositiveButton("Export", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        doExport(e);
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void doExport(final AppEntry e) {
         final Operation op = new Operation("Export package · " + e.label);
         activeOperation = op;
         op.log("Packing base APK, split APKs and native libs…");
@@ -1286,7 +1317,7 @@ public class MainActivity extends Activity {
                     final File zip = PackageExporter.build(appCtx, e);
                     final long size = zip.length();
                     final String name = zip.getName();
-                    StorageWriter.writeFile(appCtx, StorageWriter.ROOT + "/exports",
+                    final Uri uri = StorageWriter.writeFile(appCtx, StorageWriter.ROOT + "/exports",
                             name, "application/zip", zip);
                     zip.delete();
                     ui.post(new Runnable() {
@@ -1295,6 +1326,8 @@ public class MainActivity extends Activity {
                             setBusy(false, null);
                             op.done(true, name + "  (" + Utils.humanSize(size) + ")\n"
                                     + "Download/AppMan/exports/" + name);
+                            op.dialog.dismiss();
+                            showExportDone(name, size, uri);
                         }
                     });
                 } catch (final Exception ex) {
@@ -1308,6 +1341,42 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    private void openDownloads() {
+        try {
+            startActivity(new Intent(android.app.DownloadManager.ACTION_VIEW_DOWNLOADS));
+        } catch (Exception ex) {
+            Utils.toast(this, "Open your Files app → Download/AppMan");
+        }
+    }
+
+    private void showExportDone(String name, long size, final Uri uri) {
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+                .setTitle("Export complete")
+                .setMessage(name + "  (" + Utils.humanSize(size) + ")\n\n"
+                        + "Download/AppMan/exports/" + name)
+                .setPositiveButton("Open Downloads", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        openDownloads();
+                    }
+                })
+                .setNegativeButton("Close", null);
+        if (uri != null && "content".equals(uri.getScheme())) {
+            b.setNeutralButton("Share zip", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("application/zip");
+                    send.putExtra(Intent.EXTRA_STREAM, uri);
+                    send.setClipData(ClipData.newRawUri("package zip", uri));
+                    send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(send, "Share package zip"));
+                }
+            });
+        }
+        b.show();
     }
 
     private void openNativeLibs(final AppEntry e) {

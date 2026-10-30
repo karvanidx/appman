@@ -6,8 +6,8 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 AJ="${ANDROID_JAR:-$HOME/android/sdk/platforms/android-36/android.jar}"
 MIN_SDK=24
 TARGET_SDK=34
-VERSION_CODE=7
-VERSION_NAME="1.5"
+VERSION_CODE=8
+VERSION_NAME="1.6"
 
 if [ ! -f "$AJ" ]; then
   echo "ERROR: android.jar not found at $AJ" >&2

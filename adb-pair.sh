@@ -3,7 +3,7 @@
 # Usage: ./adb-pair.sh <pair_ip:pair_port> <pairing_code> <connect_ip:connect_port>
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-APK="${APK:-$ROOT/dist/appman-1.5.apk}"
+APK="${APK:-$ROOT/dist/appman-1.6.apk}"
 
 if [ $# -lt 3 ]; then
   echo "Usage: $0 <pair_ip:pair_port> <pairing_code> <connect_ip:connect_port>" >&2

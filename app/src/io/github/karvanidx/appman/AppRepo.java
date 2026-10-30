@@ -32,6 +32,9 @@ public final class AppRepo {
         java.util.Map<String, UsageStats> usage =
                 UsageRepo.query(ctx, now - 30L * 24 * 60 * 60 * 1000, now);
         java.util.Set<String> active = UsageRepo.activePackages(ctx);
+        if (ShizukuHelper.isReady()) {
+            active.addAll(ShizukuHelper.runningPackages());
+        }
 
         int n = 0;
         for (PackageInfo pi : packages) {

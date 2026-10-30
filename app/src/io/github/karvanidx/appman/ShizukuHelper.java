@@ -1,5 +1,6 @@
 package io.github.karvanidx.appman;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -11,7 +12,10 @@ import android.os.Looper;
 import android.os.Parcel;
 import android.os.RemoteException;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +51,7 @@ public final class ShizukuHelper {
     private static final int CODE_CLEAR_CACHE = 98;  // IPackageManager.deleteApplicationCacheFilesAsUser
     private static final int CODE_FORCE_STOP = 85;   // IActivityManager.forceStopPackage
     private static final int CODE_DELETE = 51;       // IPackageManager.deletePackageAsUser
+    private static final int CODE_RUNNING = 89;      // IActivityManager.getRunningAppProcesses
 
     public interface StateListener {
         void onShizukuStateChanged();
@@ -205,6 +210,41 @@ public final class ShizukuHelper {
             }
             return super.onTransact(code, data, reply, flags);
         }
+    }
+
+    /** All running process packages, including background processes (needs Shizuku). */
+    public static Set<String> runningPackages() {
+        Set<String> out = new HashSet<>();
+        if (!isReady()) return out;
+        IBinder target;
+        try {
+            target = SystemServiceHelper.getSystemService(SVC_ACTIVITY);
+        } catch (Throwable t) {
+            return out;
+        }
+        if (target == null) return out;
+        int code = resolveCode(STUB_ACT, "getRunningAppProcesses", CODE_RUNNING);
+        Parcel data = Parcel.obtain();
+        Parcel reply = Parcel.obtain();
+        try {
+            data.writeInterfaceToken(DESC_ACT);
+            IBinder proxy = new ShizukuBinderWrapper(target);
+            proxy.transact(code, data, reply, 0);
+            reply.readException();
+            ArrayList<ActivityManager.RunningAppProcessInfo> list =
+                    reply.createTypedArrayList(ActivityManager.RunningAppProcessInfo.CREATOR);
+            if (list != null) {
+                for (ActivityManager.RunningAppProcessInfo info : list) {
+                    if (info.processName == null) continue;
+                    out.add(info.processName.split(":")[0]);
+                }
+            }
+        } catch (Throwable ignored) {
+        } finally {
+            data.recycle();
+            reply.recycle();
+        }
+        return out;
     }
 
     public static Result forceStop(String pkg) {
